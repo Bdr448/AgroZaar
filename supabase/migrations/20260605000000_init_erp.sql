@@ -50,8 +50,8 @@ BEGIN
   VALUES (
     new.id,
     new.email,
-    coalesce(new.raw_user_meta_data->>'name', 'ERP User'),
-    coalesce((new.raw_user_meta_data->>'role')::public.user_role, 'warehouse'::public.user_role)
+    'ERP User',
+    'warehouse'::public.user_role
   );
   RETURN NEW;
 END;
