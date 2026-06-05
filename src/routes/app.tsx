@@ -1,4 +1,4 @@
-import { createFileRoute, Outlet, useNavigate } from "@tanstack/react-router";
+import { createFileRoute, Outlet, useNavigate, useLocation } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import { ErpSidebar } from "@/components/erp/ErpSidebar";
 import { ErpHeader } from "@/components/erp/ErpHeader";
@@ -12,10 +12,13 @@ export const Route = createFileRoute("/app")({
 
 function ErpLayout() {
   const navigate = useNavigate();
+  const location = useLocation();
   const user = useSession();
   const [collapsed, setCollapsed] = useState(false);
   const [mobileOpen, setMobileOpen] = useState(false);
   const [ready, setReady] = useState(false);
+
+  const currentPath = location.pathname;
 
   useEffect(() => {
     if (typeof window === "undefined") return;
@@ -23,8 +26,33 @@ function ErpLayout() {
       navigate({ to: isSessionExpired() ? "/session-expired" : "/login" });
       return;
     }
+
+    // Central role-based authorization guard
+    const allowedPaths = new Set<string>([
+      "/app",
+      "/app/",
+      "/app/dashboard",
+    ]);
+
+    const nav = ROLE_NAV[user.role] || [];
+    nav.forEach((item) => {
+      if (item.to) allowedPaths.add(item.to.toLowerCase());
+      if (item.children) {
+        item.children.forEach((child) => {
+          if (child.to) allowedPaths.add(child.to.toLowerCase());
+        });
+      }
+    });
+
+    const normalizedPath = currentPath.toLowerCase().replace(/\/$/, "");
+
+    if (normalizedPath.startsWith("/app") && !allowedPaths.has(normalizedPath)) {
+      navigate({ to: "/unauthorized" });
+      return;
+    }
+
     setReady(true);
-  }, [user, navigate]);
+  }, [user, navigate, currentPath]);
 
   if (!ready || !user) {
     return (
