@@ -1,0 +1,120 @@
+import { useSyncExternalStore } from "react";
+import { supabase } from "../supabase";
+
+export type RoleId =
+  | "super-admin"
+  | "admin"
+  | "partner"
+  | "supervisor"
+  | "sales"
+  | "accountant"
+  | "warehouse"
+  | "qc-manager"
+  | "distributor"
+  | "retailer";
+
+export interface ErpUser {
+  name: string;
+  email: string;
+  role: RoleId;
+  loginAt: number;
+}
+
+const listeners = new Set<() => void>();
+let cachedUser: ErpUser | null = null;
+let initialized = false;
+
+function emit() {
+  listeners.forEach((l) => l());
+}
+
+export function subscribe(listener: () => void) {
+  listeners.add(listener);
+  return () => listeners.delete(listener);
+}
+
+// Fetch user profile from public.user_profiles
+async function fetchUserProfile(userId: string, email: string): Promise<ErpUser> {
+  const { data: profile } = await supabase
+    .from("user_profiles")
+    .select("name, role")
+    .eq("id", userId)
+    .maybeSingle();
+
+  return {
+    name: profile?.name || "ERP User",
+    email: email,
+    role: (profile?.role || "warehouse") as RoleId,
+    loginAt: Date.now(),
+  };
+}
+
+// Initialize session listener
+if (typeof window !== "undefined" && !initialized) {
+  initialized = true;
+  supabase.auth.onAuthStateChange(async (event, session) => {
+    if (session?.user) {
+      cachedUser = await fetchUserProfile(session.user.id, session.user.email || "");
+    } else {
+      cachedUser = null;
+    }
+    emit();
+  });
+
+  // Get initial session
+  supabase.auth.getSession().then(async ({ data: { session } }) => {
+    if (session?.user) {
+      cachedUser = await fetchUserProfile(session.user.id, session.user.email || "");
+      emit();
+    }
+  });
+}
+
+export function getSession(): ErpUser | null {
+  return cachedUser;
+}
+
+export function isSessionExpired(): boolean {
+  // Supabase manages session tokens automatically
+  return false;
+}
+
+export const ROLE_NAMES_BY_ROLE: Record<RoleId, string> = {
+  "super-admin": "Sharad Patel",
+  admin: "Admin User",
+  partner: "Business Partner",
+  supervisor: "Plant Supervisor",
+  sales: "Sales Executive",
+  accountant: "Accounts Manager",
+  warehouse: "Warehouse User",
+  "qc-manager": "QC Manager",
+  distributor: "Distributor User",
+  retailer: "Retailer User",
+};
+
+export async function login(email: string, role: RoleId, password?: string) {
+  const { data, error } = await supabase.auth.signInWithPassword({
+    email,
+    password: password || "demo-password-123", // default fallback for demo mode
+  });
+
+  if (error) {
+    throw error;
+  }
+
+  if (data.user) {
+    cachedUser = await fetchUserProfile(data.user.id, data.user.email || email);
+    emit();
+    return cachedUser;
+  }
+}
+
+export function logout() {
+  cachedUser = null;
+  supabase.auth.signOut().catch(console.error);
+  emit();
+}
+
+export function useSession(): ErpUser | null {
+  return useSyncExternalStore(subscribe, getSession, () => null);
+}

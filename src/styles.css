@@ -1,0 +1,122 @@
+@import "tw-animate-css";
+@import "tailwindcss" source(none);
+@source "../src";
+
+@custom-variant dark (&:is(.dark *));
+
+@theme inline {
+  --radius-sm: calc(var(--radius) - 4px);
+  --radius-md: calc(var(--radius) - 2px);
+  --radius-lg: var(--radius);
+  --radius-xl: calc(var(--radius) + 4px);
+  --radius-2xl: calc(var(--radius) + 8px);
+  --radius-3xl: calc(var(--radius) + 12px);
+
+  --font-sans: "Manrope", system-ui, sans-serif;
+  --font-heading: "Poppins", system-ui, sans-serif;
+  --font-body: "Inter", system-ui, sans-serif;
+
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+  --color-popover: var(--popover);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-destructive: var(--destructive);
+  --color-destructive-foreground: var(--destructive-foreground);
+  --color-border: var(--border);
+  --color-input: var(--input);
+  --color-ring: var(--ring);
+
+  --color-brand: var(--brand);
+  --color-brand-foreground: var(--brand-foreground);
+  --color-spice-brown: var(--spice-brown);
+  --color-olive: var(--olive);
+  --color-beige: var(--beige);
+
+  --color-sidebar: var(--sidebar);
+  --color-sidebar-foreground: var(--sidebar-foreground);
+  --color-sidebar-muted: var(--sidebar-muted);
+  --color-sidebar-accent: var(--sidebar-accent);
+  --color-sidebar-border: var(--sidebar-border);
+
+  --shadow-soft: 0 1px 2px -1px rgb(92 58 33 / 0.06), 0 8px 24px -12px rgb(92 58 33 / 0.12);
+  --shadow-card: 0 2px 4px -2px rgb(92 58 33 / 0.08), 0 18px 40px -20px rgb(92 58 33 / 0.18);
+  --shadow-glow: 0 20px 50px -24px rgb(232 155 0 / 0.45);
+}
+
+:root {
+  --radius: 0.75rem;
+
+  --background: oklch(0.985 0.006 80);      /* warm white #FAF8F5 */
+  --foreground: oklch(0.22 0.004 60);       /* charcoal #1F1F1F */
+
+  --card: oklch(1 0 0);
+  --card-foreground: oklch(0.22 0.004 60);
+  --popover: oklch(1 0 0);
+  --popover-foreground: oklch(0.22 0.004 60);
+
+  --primary: oklch(0.72 0.155 70);          /* turmeric #E89B00 */
+  --primary-foreground: oklch(0.99 0.005 80);
+
+  --secondary: oklch(0.95 0.012 75);        /* light beige #F3EEE7 */
+  --secondary-foreground: oklch(0.36 0.05 50);
+
+  --muted: oklch(0.95 0.012 75);
+  --muted-foreground: oklch(0.5 0.02 55);
+
+  --accent: oklch(0.6 0.07 125);            /* soft olive #6D7C43 */
+  --accent-foreground: oklch(0.99 0.005 80);
+
+  --destructive: oklch(0.577 0.245 27.325);
+  --destructive-foreground: oklch(0.99 0.005 80);
+
+  --border: oklch(0.9 0.012 70);
+  --input: oklch(0.9 0.012 70);
+  --ring: oklch(0.72 0.155 70);
+
+  --brand: oklch(0.72 0.155 70);            /* turmeric */
+  --brand-foreground: oklch(0.99 0.005 80);
+  --spice-brown: oklch(0.36 0.05 50);       /* deep spice brown #5C3A21 */
+  --olive: oklch(0.6 0.07 125);             /* soft olive #6D7C43 */
+  --beige: oklch(0.95 0.012 75);            /* light beige #F3EEE7 */
+
+  /* ERP calm dark-brown sidebar */
+  --sidebar: oklch(0.27 0.035 52);          /* deep spice brown */
+  --sidebar-foreground: oklch(0.9 0.015 75);
+  --sidebar-muted: oklch(0.72 0.02 70);     /* dimmed labels */
+  --sidebar-accent: oklch(0.34 0.045 52);   /* hover row */
+  --sidebar-border: oklch(0.36 0.04 52);
+}
+
+@layer base {
+  * {
+    border-color: var(--color-border);
+  }
+  body {
+    background-color: var(--color-background);
+    color: var(--color-foreground);
+    font-family: var(--font-body);
+    -webkit-font-smoothing: antialiased;
+  }
+  h1, h2, h3, h4, h5 {
+    font-family: var(--font-heading);
+    letter-spacing: -0.02em;
+  }
+}
+
+@layer utilities {
+  .font-heading { font-family: var(--font-heading); }
+  .font-sans { font-family: var(--font-sans); }
+  .text-balance { text-wrap: balance; }
+  .section-pad { padding-block: clamp(4rem, 8vw, 7rem); }
+  .container-x { width: 100%; max-width: 80rem; margin-inline: auto; padding-inline: 1.5rem; }
+}
