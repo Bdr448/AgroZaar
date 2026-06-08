@@ -1,9 +1,11 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Users, Wallet, FileText, Download, Plus, BadgeIndianRupee, CalendarClock } from "lucide-react";
 import { PageHeader, Panel, StatCard, StatusBadge } from "@/components/erp/widgets";
 import { DataTable, type Column } from "@/components/erp/DataTable";
 import { useSession } from "@/lib/erp/auth";
+import { supabase } from "@/lib/supabase";
+import { toast } from "sonner";
 
 export const Route = createFileRoute("/app/payroll")({
   head: () => ({ meta: [{ title: "Payroll & Salary — Agrozaar Foods LLP ERP" }] }),
@@ -23,24 +25,80 @@ interface SalaryRow extends Record<string, unknown> {
   status: string;
 }
 
-const SALARY_DATA: SalaryRow[] = [
-  { code: "EMP-001", name: "Rakesh Mehta", dept: "Production", designation: "Plant Supervisor", basic: 32000, hra: 9600, allowances: 4000, deductions: 3800, net: 41800, status: "Processed" },
-  { code: "EMP-002", name: "Sunita Rao", dept: "Quality", designation: "QC Analyst", basic: 28000, hra: 8400, allowances: 3000, deductions: 3200, net: 36200, status: "Processed" },
-  { code: "EMP-003", name: "Imran Shaikh", dept: "Warehouse", designation: "Store Keeper", basic: 22000, hra: 6600, allowances: 2500, deductions: 2600, net: 28500, status: "Pending" },
-  { code: "EMP-004", name: "Priya Nair", dept: "Sales", designation: "Sales Executive", basic: 26000, hra: 7800, allowances: 5000, deductions: 3000, net: 35800, status: "Pending" },
-  { code: "EMP-005", name: "Vikram Joshi", dept: "Accounts", designation: "Accountant", basic: 30000, hra: 9000, allowances: 3500, deductions: 3500, net: 39000, status: "Processed" },
-];
-
 const inr = (n: number) => `₹${n.toLocaleString("en-IN")}`;
 
 function PayrollPage() {
   const user = useSession();
   const [tab, setTab] = useState<"register" | "master" | "reports">("register");
+  const [rows, setRows] = useState<SalaryRow[]>([]);
+  const [loading, setLoading] = useState(true);
+
   if (!user) return null;
 
-  // Employees see only their own salary.
   const isEmployee = !["super-admin", "admin", "accountant", "partner"].includes(user.role);
-  const rows = isEmployee ? SALARY_DATA.slice(0, 1) : SALARY_DATA;
+
+  useEffect(() => {
+    async function loadPayroll() {
+      setLoading(true);
+      try {
+        const { data: slips, error } = await supabase
+          .from("salary_slips")
+          .select(`
+            id,
+            basic,
+            hra,
+            allowances,
+            deductions,
+            net_pay,
+            status,
+            employees (
+              employee_code,
+              designation,
+              department,
+              profile_id,
+              user_profiles (
+                name
+              )
+            )
+          `);
+
+        if (error) {
+          console.error("Error loading payroll:", error);
+          toast.error("Failed to load payroll data: " + error.message);
+          return;
+        }
+
+        if (slips) {
+          const formatted: SalaryRow[] = slips.map((s: any) => {
+            const emp = s.employees || {};
+            const prof = emp.user_profiles || {};
+            return {
+              code: emp.employee_code || "EMP-?",
+              name: prof.name || "Employee",
+              dept: emp.department || "General",
+              designation: emp.designation || "Staff",
+              basic: Number(s.basic) || 0,
+              hra: Number(s.hra) || 0,
+              allowances: Number(s.allowances) || 0,
+              deductions: Number(s.deductions) || 0,
+              net: Number(s.net_pay) || 0,
+              status: s.status === "paid" ? "Processed" : "Pending",
+            };
+          });
+          setRows(formatted);
+        }
+      } catch (err: any) {
+        console.error("Exception in loadPayroll:", err);
+      } finally {
+        setLoading(false);
+      }
+    }
+
+    if (user) {
+      loadPayroll();
+    }
+  }, [user]);
+
 
   const totalNet = rows.reduce((s, r) => s + r.net, 0);
   const processed = rows.filter((r) => r.status === "Processed").length;
@@ -108,7 +166,15 @@ function PayrollPage() {
         </div>
       )}
 
-      {(tab === "register" || isEmployee) && <DataTable columns={columns} data={rows} />}
+      {(tab === "register" || isEmployee) && (
+        loading ? (
+          <div className="flex h-32 items-center justify-center rounded-xl border border-dashed border-border bg-card/60">
+            <p className="text-sm text-muted-foreground animate-pulse font-medium">Loading payroll records...</p>
+          </div>
+        ) : (
+          <DataTable columns={columns} data={rows} emptyLabel="No salary slips found." />
+        )
+      )}
 
       {!isEmployee && tab === "master" && (
         <Panel title="Salary Master Structure">

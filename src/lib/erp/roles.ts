@@ -29,6 +29,7 @@ import {
   Lock,
   BookOpen,
   KeyRound,
+  CreditCard,
 } from "lucide-react";
 import type { RoleId } from "./auth";
 
@@ -48,6 +49,8 @@ export const ROLE_LABELS: Record<RoleId, string> = {
   accountant: "Accountant",
   warehouse: "Warehouse User",
   "qc-manager": "QC Manager",
+  distributor: "Distributor",
+  retailer: "Retailer",
 };
 
 const slug = (s: string) => s.toLowerCase().replace(/&/g, "and").replace(/[^a-z0-9]+/g, "-").replace(/(^-|-$)/g, "");
@@ -72,6 +75,7 @@ const superAdminNav: NavItem[] = [
   item("QC Management", ShieldCheck),
   item("Sales", TrendingUp),
   item("Accounts", Wallet),
+  item("Billing", CreditCard),
   item("Accounting", BookOpen),
   item("Payroll", KeyRound),
   item("Reports", FileBarChart),
@@ -120,6 +124,7 @@ const partnerNav: NavItem[] = [
 const accountantNav: NavItem[] = [
   dashboard,
   item("Invoices", Receipt),
+  item("Billing", CreditCard),
   item("Payments", Wallet),
   item("Accounting", BookOpen),
   item("Payroll", KeyRound),
@@ -147,6 +152,21 @@ const warehouseNav: NavItem[] = [
   item("Payroll", KeyRound),
 ];
 
+const distributorNav: NavItem[] = [
+  dashboard,
+  item("My Orders", ClipboardList),
+  item("Products", Package),
+  item("Outstanding Reports", Receipt),
+  item("Invoices", Receipt),
+];
+
+const retailerNav: NavItem[] = [
+  dashboard,
+  item("My Orders", ClipboardList),
+  item("Products", Package),
+  item("Invoices", Receipt),
+];
+
 export const ROLE_NAV: Record<RoleId, NavItem[]> = {
   "super-admin": superAdminNav,
   admin: adminNav,
@@ -156,4 +176,6 @@ export const ROLE_NAV: Record<RoleId, NavItem[]> = {
   accountant: accountantNav,
   warehouse: warehouseNav,
   "qc-manager": qcNav,
+  distributor: distributorNav,
+  retailer: retailerNav,
 };

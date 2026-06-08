@@ -22,6 +22,7 @@ import { Route as AppPayrollRouteImport } from './routes/app.payroll'
 import { Route as AppOwnerVaultRouteImport } from './routes/app.owner-vault'
 import { Route as AppDelegatedAuthorityRouteImport } from './routes/app.delegated-authority'
 import { Route as AppDashboardRouteImport } from './routes/app.dashboard'
+import { Route as AppBillingRouteImport } from './routes/app.billing'
 import { Route as AppAccountingRouteImport } from './routes/app.accounting'
 import { Route as AppSplatRouteImport } from './routes/app.$'
 
@@ -90,6 +91,11 @@ const AppDashboardRoute = AppDashboardRouteImport.update({
   path: '/dashboard',
   getParentRoute: () => AppRoute,
 } as any)
+const AppBillingRoute = AppBillingRouteImport.update({
+  id: '/billing',
+  path: '/billing',
+  getParentRoute: () => AppRoute,
+} as any)
 const AppAccountingRoute = AppAccountingRouteImport.update({
   id: '/accounting',
   path: '/accounting',
@@ -112,6 +118,7 @@ export interface FileRoutesByFullPath {
   '/unauthorized': typeof UnauthorizedRoute
   '/app/$': typeof AppSplatRoute
   '/app/accounting': typeof AppAccountingRoute
+  '/app/billing': typeof AppBillingRoute
   '/app/dashboard': typeof AppDashboardRoute
   '/app/delegated-authority': typeof AppDelegatedAuthorityRoute
   '/app/owner-vault': typeof AppOwnerVaultRoute
@@ -128,6 +135,7 @@ export interface FileRoutesByTo {
   '/unauthorized': typeof UnauthorizedRoute
   '/app/$': typeof AppSplatRoute
   '/app/accounting': typeof AppAccountingRoute
+  '/app/billing': typeof AppBillingRoute
   '/app/dashboard': typeof AppDashboardRoute
   '/app/delegated-authority': typeof AppDelegatedAuthorityRoute
   '/app/owner-vault': typeof AppOwnerVaultRoute
@@ -146,6 +154,7 @@ export interface FileRoutesById {
   '/unauthorized': typeof UnauthorizedRoute
   '/app/$': typeof AppSplatRoute
   '/app/accounting': typeof AppAccountingRoute
+  '/app/billing': typeof AppBillingRoute
   '/app/dashboard': typeof AppDashboardRoute
   '/app/delegated-authority': typeof AppDelegatedAuthorityRoute
   '/app/owner-vault': typeof AppOwnerVaultRoute
@@ -165,6 +174,7 @@ export interface FileRouteTypes {
     | '/unauthorized'
     | '/app/$'
     | '/app/accounting'
+    | '/app/billing'
     | '/app/dashboard'
     | '/app/delegated-authority'
     | '/app/owner-vault'
@@ -181,6 +191,7 @@ export interface FileRouteTypes {
     | '/unauthorized'
     | '/app/$'
     | '/app/accounting'
+    | '/app/billing'
     | '/app/dashboard'
     | '/app/delegated-authority'
     | '/app/owner-vault'
@@ -198,6 +209,7 @@ export interface FileRouteTypes {
     | '/unauthorized'
     | '/app/$'
     | '/app/accounting'
+    | '/app/billing'
     | '/app/dashboard'
     | '/app/delegated-authority'
     | '/app/owner-vault'
@@ -309,6 +321,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppDashboardRouteImport
       parentRoute: typeof AppRoute
     }
+    '/app/billing': {
+      id: '/app/billing'
+      path: '/billing'
+      fullPath: '/app/billing'
+      preLoaderRoute: typeof AppBillingRouteImport
+      parentRoute: typeof AppRoute
+    }
     '/app/accounting': {
       id: '/app/accounting'
       path: '/accounting'
@@ -329,6 +348,7 @@ declare module '@tanstack/react-router' {
 interface AppRouteChildren {
   AppSplatRoute: typeof AppSplatRoute
   AppAccountingRoute: typeof AppAccountingRoute
+  AppBillingRoute: typeof AppBillingRoute
   AppDashboardRoute: typeof AppDashboardRoute
   AppDelegatedAuthorityRoute: typeof AppDelegatedAuthorityRoute
   AppOwnerVaultRoute: typeof AppOwnerVaultRoute
@@ -339,6 +359,7 @@ interface AppRouteChildren {
 const AppRouteChildren: AppRouteChildren = {
   AppSplatRoute: AppSplatRoute,
   AppAccountingRoute: AppAccountingRoute,
+  AppBillingRoute: AppBillingRoute,
   AppDashboardRoute: AppDashboardRoute,
   AppDelegatedAuthorityRoute: AppDelegatedAuthorityRoute,
   AppOwnerVaultRoute: AppOwnerVaultRoute,

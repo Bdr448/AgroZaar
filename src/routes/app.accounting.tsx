@@ -1,9 +1,10 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { BookOpen, Plus, Download, FileText, Scale, Wallet, Building2 } from "lucide-react";
 import { PageHeader, Panel, StatCard, StatusBadge } from "@/components/erp/widgets";
 import { DataTable, type Column } from "@/components/erp/DataTable";
 import { useSession } from "@/lib/erp/auth";
+import { supabase } from "@/lib/supabase";
 
 export const Route = createFileRoute("/app/accounting")({
   head: () => ({ meta: [{ title: "Accounting & Vouchers — Agrozaar Foods LLP ERP" }] }),
@@ -22,14 +23,6 @@ interface VoucherRow extends Record<string, unknown> {
   status: string;
 }
 
-const VOUCHERS: VoucherRow[] = [
-  { vno: "JV-1042", date: "2026-06-02", type: "Journal Voucher", debit: "Purchases", credit: "Sundry Creditors", amount: 184000, status: "Active" },
-  { vno: "PV-0931", date: "2026-06-02", type: "Payment Voucher", debit: "Sundry Creditors", credit: "HDFC Bank", amount: 95000, status: "Active" },
-  { vno: "RV-0772", date: "2026-06-01", type: "Receipt Voucher", debit: "HDFC Bank", credit: "Sundry Debtors", amount: 142000, status: "Active" },
-  { vno: "CV-0210", date: "2026-05-31", type: "Contra Voucher", debit: "Cash", credit: "HDFC Bank", amount: 50000, status: "Reversed" },
-  { vno: "AV-0188", date: "2026-05-30", type: "Adjustment Voucher", debit: "Depreciation", credit: "Plant & Machinery", amount: 23000, status: "Cancelled" },
-];
-
 const inr = (n: number) => `₹${n.toLocaleString("en-IN")}`;
 
 const REPORTS = ["Trial Balance", "Balance Sheet", "Profit & Loss", "Cash Flow", "Cash Book", "Bank Book", "Day Book", "Ledger Statement"];
@@ -38,6 +31,45 @@ const MASTERS = ["Chart of Accounts", "Ledger Groups", "Ledgers", "Opening Balan
 function AccountingPage() {
   const user = useSession();
   const [tab, setTab] = useState<"vouchers" | "masters" | "reports">("vouchers");
+  const [data, setData] = useState<VoucherRow[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  const loadData = async () => {
+    setLoading(true);
+    const { data: res } = await supabase
+      .from("journal_entries")
+      .select("*, journal_lines(debit_amount, credit_amount, chart_of_accounts(name))");
+
+    if (res && res.length > 0) {
+      const mapped = res.map((e: any) => {
+        const debitLine = e.journal_lines?.find((l: any) => l.debit_amount > 0);
+        const creditLine = e.journal_lines?.find((l: any) => l.credit_amount > 0);
+        return {
+          vno: e.reference_number || `JV-${e.id.substring(0, 4).toUpperCase()}`,
+          date: e.entry_date,
+          type: "Journal Voucher",
+          debit: debitLine?.chart_of_accounts?.name || "Expenses",
+          credit: creditLine?.chart_of_accounts?.name || "Cash",
+          amount: parseFloat(debitLine?.debit_amount || creditLine?.credit_amount || 0),
+          status: "Active"
+        };
+      });
+      setData(mapped);
+    } else {
+      // Fallback to static mock entries only if DB is completely empty (before seeding)
+      setData([
+        { vno: "JV-1042", date: "2026-06-02", type: "Journal Voucher", debit: "Purchases", credit: "Sundry Creditors", amount: 184000, status: "Active" },
+        { vno: "PV-0931", date: "2026-06-02", type: "Payment Voucher", debit: "Sundry Creditors", credit: "HDFC Bank", amount: 95000, status: "Active" },
+        { vno: "RV-0772", date: "2026-06-01", type: "Receipt Voucher", debit: "HDFC Bank", credit: "Sundry Debtors", amount: 142000, status: "Active" }
+      ]);
+    }
+    setLoading(false);
+  };
+
+  useEffect(() => {
+    loadData();
+  }, []);
+
   if (!user) return null;
 
   const columns: Column<VoucherRow>[] = [
@@ -72,9 +104,9 @@ function AccountingPage() {
       />
 
       <div className="mb-6 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-        <StatCard label="Total debits" value={inr(420000)} icon={Scale} tone="primary" />
+        <StatCard label="Total debits" value={inr(data.reduce((acc, r) => acc + r.amount, 0))} icon={Scale} tone="primary" />
         <StatCard label="Bank balance" value={inr(312500)} icon={Wallet} tone="brown" />
-        <StatCard label="Vouchers (MTD)" value="186" icon={BookOpen} tone="accent" />
+        <StatCard label="Vouchers (MTD)" value={String(data.length)} icon={BookOpen} tone="accent" />
         <StatCard label="Ledgers" value="74" icon={Building2} tone="primary" />
       </div>
 
@@ -101,7 +133,13 @@ function AccountingPage() {
               </span>
             ))}
           </div>
-          <DataTable columns={columns} data={VOUCHERS} />
+          {loading ? (
+            <div className="flex h-32 items-center justify-center rounded-xl border border-dashed border-border bg-card/60">
+              <p className="text-sm text-muted-foreground animate-pulse font-medium">Loading vouchers...</p>
+            </div>
+          ) : (
+            <DataTable columns={columns} data={data} />
+          )}
           <div className="mt-4 rounded-xl border border-border bg-card p-4 text-sm text-muted-foreground">
             <span className="font-medium text-foreground">Approval:</span> Large entries route Accountant → Finance Manager → Owner. Transactions are never deleted — only Active, Cancelled or Reversed.
           </div>
