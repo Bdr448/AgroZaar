@@ -1,5 +1,5 @@
 import { useSyncExternalStore } from "react";
-import { supabase } from "../supabase";
+import { isSupabaseConfigured, supabase } from "../supabase";
 
 export type RoleId =
   | "super-admin"
@@ -85,7 +85,7 @@ const fetchUserProfileDeferred = (userId: string, email: string) => {
 };
 
 // Initialize session listener
-if (typeof window !== "undefined" && !initialized) {
+if (typeof window !== "undefined" && isSupabaseConfigured && !initialized) {
   initialized = true;
   supabase.auth.onAuthStateChange(async (_event, session) => {
     if (session?.user) {
@@ -128,6 +128,12 @@ export const ROLE_NAMES_BY_ROLE: Record<RoleId, string> = {
 };
 
 export async function login(email: string, role: RoleId, password?: string) {
+  if (!isSupabaseConfigured) {
+    throw new Error(
+      "Supabase is not configured. Add VITE_SUPABASE_URL and VITE_SUPABASE_ANON_KEY in Render, then redeploy.",
+    );
+  }
+
   const { data, error } = await withTimeout(
     supabase.auth.signInWithPassword({
       email,
