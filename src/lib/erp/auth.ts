@@ -23,6 +23,26 @@ export interface ErpUser {
 const listeners = new Set<() => void>();
 let cachedUser: ErpUser | null = null;
 let initialized = false;
+const AUTH_TIMEOUT_MS = 12_000;
+
+function withTimeout<T>(promise: PromiseLike<T>, message: string): Promise<T> {
+  return new Promise((resolve, reject) => {
+    const timer = globalThis.setTimeout(() => {
+      reject(new Error(message));
+    }, AUTH_TIMEOUT_MS);
+
+    promise.then(
+      (value) => {
+        globalThis.clearTimeout(timer);
+        resolve(value);
+      },
+      (error) => {
+        globalThis.clearTimeout(timer);
+        reject(error);
+      },
+    );
+  });
+}
 
 function emit() {
   listeners.forEach((l) => l());
@@ -36,11 +56,14 @@ export function subscribe(listener: () => void) {
 // Fetch user profile from public.user_profiles
 async function fetchUserProfile(userId: string, email: string): Promise<ErpUser> {
   try {
-    const { data: profile } = await supabase
-      .from("user_profiles")
-      .select("name, role")
-      .eq("id", userId)
-      .maybeSingle();
+    const { data: profile } = await withTimeout(
+      supabase
+        .from("user_profiles")
+        .select("name, role")
+        .eq("id", userId)
+        .maybeSingle(),
+      "Profile request timed out.",
+    );
 
     return {
       name: profile?.name || "ERP User",
@@ -73,11 +96,13 @@ if (typeof window !== "undefined" && !initialized) {
     }
   });
 
-  supabase.auth.getSession().then(async ({ data: { session } }) => {
-    if (session?.user) {
-      fetchUserProfileDeferred(session.user.id, session.user.email || "");
-    }
-  });
+  withTimeout(supabase.auth.getSession(), "Session request timed out.")
+    .then(({ data: { session } }) => {
+      if (session?.user) {
+        fetchUserProfileDeferred(session.user.id, session.user.email || "");
+      }
+    })
+    .catch(console.warn);
 }
 
 export function getSession(): ErpUser | null {
@@ -103,10 +128,13 @@ export const ROLE_NAMES_BY_ROLE: Record<RoleId, string> = {
 };
 
 export async function login(email: string, role: RoleId, password?: string) {
-  const { data, error } = await supabase.auth.signInWithPassword({
-    email,
-    password: password || "demo-password-123",
-  });
+  const { data, error } = await withTimeout(
+    supabase.auth.signInWithPassword({
+      email,
+      password: password || "demo-password-123",
+    }),
+    "Login request timed out. Please check the Vercel Supabase environment variables and try again.",
+  );
 
   if (error) throw error;
 
