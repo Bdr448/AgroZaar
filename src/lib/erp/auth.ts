@@ -35,34 +35,21 @@ export function subscribe(listener: () => void) {
 
 // Fetch user profile from public.user_profiles
 async function fetchUserProfile(userId: string, email: string): Promise<ErpUser> {
-  console.log("fetchUserProfile: starting query for userId", userId);
   try {
-    const { data: profile, error } = await supabase
+    const { data: profile } = await supabase
       .from("user_profiles")
       .select("name, role")
       .eq("id", userId)
       .maybeSingle();
 
-    if (error) {
-      console.error("fetchUserProfile: query error:", error);
-    } else {
-      console.log("fetchUserProfile: query success, profile:", profile);
-    }
-
     return {
       name: profile?.name || "ERP User",
-      email: email,
+      email,
       role: (profile?.role || "warehouse") as RoleId,
       loginAt: Date.now(),
     };
-  } catch (err) {
-    console.error("fetchUserProfile: exception:", err);
-    return {
-      name: "ERP User",
-      email: email,
-      role: "warehouse" as RoleId,
-      loginAt: Date.now(),
-    };
+  } catch {
+    return { name: "ERP User", email, role: "warehouse" as RoleId, loginAt: Date.now() };
   }
 }
 
@@ -77,8 +64,7 @@ const fetchUserProfileDeferred = (userId: string, email: string) => {
 // Initialize session listener
 if (typeof window !== "undefined" && !initialized) {
   initialized = true;
-  supabase.auth.onAuthStateChange(async (event, session) => {
-    console.log("onAuthStateChange event:", event, "session user:", session?.user?.id);
+  supabase.auth.onAuthStateChange(async (_event, session) => {
     if (session?.user) {
       fetchUserProfileDeferred(session.user.id, session.user.email || "");
     } else {
@@ -87,9 +73,7 @@ if (typeof window !== "undefined" && !initialized) {
     }
   });
 
-  // Get initial session
   supabase.auth.getSession().then(async ({ data: { session } }) => {
-    console.log("getInitialSession user:", session?.user?.id);
     if (session?.user) {
       fetchUserProfileDeferred(session.user.id, session.user.email || "");
     }
@@ -119,33 +103,21 @@ export const ROLE_NAMES_BY_ROLE: Record<RoleId, string> = {
 };
 
 export async function login(email: string, role: RoleId, password?: string) {
-  console.log("=== ERP LOGIN DIAGNOSTICS ===");
-  console.log("Supabase URL:", import.meta.env.VITE_SUPABASE_URL);
-  console.log("Supabase Anon Key:", import.meta.env.VITE_SUPABASE_ANON_KEY?.substring(0, 15) + "...");
-  console.log("Submitting Email:", email);
-  console.log("Submitting Password:", password);
-
-  console.log("login: calling signInWithPassword...");
   const { data, error } = await supabase.auth.signInWithPassword({
     email,
-    password: password || "demo-password-123", // default fallback for demo mode
+    password: password || "demo-password-123",
   });
 
-  if (error) {
-    console.error("login: signInWithPassword error:", error);
-    throw error;
-  }
+  if (error) throw error;
 
-  console.log("login: signInWithPassword success, user:", data.user?.id);
   if (data.user) {
-    console.log("login: waiting for auth session to settle...");
-    await new Promise((resolve) => setTimeout(resolve, 20));
-    console.log("login: fetching user profile...");
     cachedUser = await fetchUserProfile(data.user.id, data.user.email || email);
-    console.log("login: fetchUserProfile finished, cachedUser:", cachedUser);
     emit();
     return cachedUser;
   }
+
+  // Fallback — if Supabase returns no user but also no error (edge case)
+  throw new Error("Login failed — no user returned. Check Supabase credentials.");
 }
 
 export function logout() {

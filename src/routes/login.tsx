@@ -41,8 +41,19 @@ function LoginPage() {
       toast.success("Secure access granted.");
       navigate({ to: "/app/dashboard" });
     } catch (err: any) {
-      toast.error(err.message || "Failed to authenticate.");
+      // Show specific error messages in Hinglish for common failures
+      const msg = err?.message || "";
+      if (msg.includes("Invalid login") || msg.includes("invalid_credentials")) {
+        toast.error("Email ya password galat hai. Check karo.");
+      } else if (msg.includes("Email not confirmed")) {
+        toast.error("Email verify nahi hua. Inbox check karo.");
+      } else if (msg.includes("fetch") || msg.includes("network") || msg.includes("Failed to fetch")) {
+        toast.error("Network error — internet connection check karo ya thodi der baad try karo.");
+      } else {
+        toast.error(msg || "Login nahi hua. Dobara try karo.");
+      }
     } finally {
+      // Always unfreeze the button — no matter what happens
       setLoading(false);
     }
   };
