@@ -2,7 +2,7 @@ import { createFileRoute, useNavigate, Link } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import { Leaf, Lock, Mail, ShieldCheck, Eye, EyeOff, Globe, Award } from "lucide-react";
 import { toast } from "sonner";
-import { login, getSession, type RoleId } from "@/lib/erp/auth";
+import { login, useSession, type RoleId } from "@/lib/erp/auth";
 import { ROLE_LABELS } from "@/lib/erp/roles";
 import heroTurmeric from "@/assets/hero-turmeric.jpg";
 
@@ -18,6 +18,7 @@ export const Route = createFileRoute("/login")({
 
 function LoginPage() {
   const navigate = useNavigate();
+  const user = useSession();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [role, setRole] = useState<RoleId>("super-admin");
@@ -26,8 +27,8 @@ function LoginPage() {
   const [loading, setLoading] = useState(false);
 
   useEffect(() => {
-    if (getSession()) navigate({ to: "/app/dashboard" });
-  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+    if (user) navigate({ to: "/app/dashboard" });
+  }, [user, navigate]);
 
   const onSubmit = async (e: React.FormEvent) => {
     e.preventDefault();

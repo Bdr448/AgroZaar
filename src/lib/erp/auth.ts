@@ -14,6 +14,7 @@ export type RoleId =
   | "retailer";
 
 export interface ErpUser {
+  id: string;
   name: string;
   email: string;
   role: RoleId;
@@ -66,19 +67,22 @@ async function fetchUserProfile(userId: string, email: string): Promise<ErpUser>
     );
 
     return {
+      id: userId,
       name: profile?.name || "ERP User",
       email,
       role: (profile?.role || "warehouse") as RoleId,
       loginAt: Date.now(),
     };
   } catch {
-    return { name: "ERP User", email, role: "warehouse" as RoleId, loginAt: Date.now() };
+    return { id: userId, name: "ERP User", email, role: "warehouse" as RoleId, loginAt: Date.now() };
   }
 }
 
 // Defer profile fetch to prevent deadlocks in Supabase client request queue
 const fetchUserProfileDeferred = (userId: string, email: string) => {
+  if (cachedUser && cachedUser.id === userId) return;
   setTimeout(async () => {
+    if (cachedUser && cachedUser.id === userId) return;
     cachedUser = await fetchUserProfile(userId, email);
     emit();
   }, 10);
@@ -100,9 +104,10 @@ if (typeof window !== "undefined" && isSupabaseConfigured && !initialized) {
     if (session?.user) {
       fetchUserProfileDeferred(session.user.id, session.user.email || "");
     } else {
+      const wasLoggedIn = cachedUser !== null;
       cachedUser = null;
       // Only emit if we actually had a user before (logout), not on initial load
-      if (cachedUser !== null) emit();
+      if (wasLoggedIn) emit();
     }
   });
 }
