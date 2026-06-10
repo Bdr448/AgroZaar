@@ -59,6 +59,37 @@ export function DataTable<T extends Record<string, unknown>>({
     }
   };
 
+  const handleExport = () => {
+    const headersStr = columns
+      .filter((c) => c.header !== "Actions" && c.header !== "Slip" && c.header !== "Modify Access")
+      .map((c) => `"${c.header.replace(/"/g, '""')}"`)
+      .join(",");
+
+    const rowsStr = filtered
+      .map((row) => {
+        return columns
+          .filter((c) => c.header !== "Actions" && c.header !== "Slip" && c.header !== "Modify Access")
+          .map((c) => {
+            const rawVal = row[c.key];
+            const valStr = rawVal != null ? String(rawVal) : "";
+            return `"${valStr.replace(/"/g, '""')}"`;
+          })
+          .join(",");
+      })
+      .join("\n");
+
+    const csvContent = `${headersStr}\n${rowsStr}`;
+    const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.setAttribute("href", url);
+    link.setAttribute("download", `Export_${new Date().toISOString().split("T")[0]}.csv`);
+    link.style.visibility = "hidden";
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  };
+
   return (
     <div className="rounded-xl border border-border bg-card shadow-soft">
       {searchable && (
@@ -75,7 +106,10 @@ export function DataTable<T extends Record<string, unknown>>({
               className="w-full rounded-lg border border-input bg-secondary/50 py-2 pl-10 pr-3 text-sm outline-none focus:border-primary focus:bg-card focus:ring-2 focus:ring-primary/20"
             />
           </div>
-          <button className="inline-flex items-center gap-1.5 rounded-lg border border-input bg-card px-3 py-2 text-sm font-medium text-foreground transition-colors hover:bg-secondary">
+          <button
+            onClick={handleExport}
+            className="inline-flex items-center gap-1.5 rounded-lg border border-input bg-card px-3 py-2 text-sm font-medium text-foreground transition-colors hover:bg-secondary"
+          >
             <Download className="h-4 w-4" /> Export
           </button>
         </div>

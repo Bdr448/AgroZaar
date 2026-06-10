@@ -1,4 +1,4 @@
-import { useNavigate } from "@tanstack/react-router";
+import { useRouter } from "@/lib/simple-router";
 import { useState, useRef, useEffect } from "react";
 import {
   Menu,
@@ -110,7 +110,7 @@ function useOutside(onClose: () => void) {
 
 /* ─── Main Header ───────────────────────────────────────── */
 export function ErpHeader({ user, onOpenMobile }: { user: ErpUser; onOpenMobile: () => void }) {
-  const navigate = useNavigate();
+  const { navigate } = useRouter();
   const [query, setQuery] = useState("");
   const [searchOpen, setSearchOpen] = useState(false);
   const searchRef = useRef<HTMLDivElement>(null);
@@ -136,7 +136,7 @@ export function ErpHeader({ user, onOpenMobile }: { user: ErpUser; onOpenMobile:
       : [];
 
   const handleSearchSelect = (to: string) => {
-    navigate({ to: to as any });
+    navigate(to);
     setQuery("");
     setSearchOpen(false);
   };
@@ -200,15 +200,6 @@ export function ErpHeader({ user, onOpenMobile }: { user: ErpUser; onOpenMobile:
 
       {/* Right actions */}
       <div className="ml-auto flex items-center gap-1.5 sm:gap-2">
-        {/* New Invoice quick-action */}
-        <button
-          onClick={() => navigate({ to: "/app/billing" as any })}
-          className="hidden items-center gap-1.5 rounded-lg bg-primary px-3 py-2 text-sm font-semibold text-primary-foreground shadow-soft transition-colors hover:bg-primary/90 sm:inline-flex"
-        >
-          <Plus className="h-4 w-4" />
-          New Invoice
-        </button>
-
         <NotificationBell />
         <ProfileMenu user={user} />
       </div>
@@ -218,7 +209,7 @@ export function ErpHeader({ user, onOpenMobile }: { user: ErpUser; onOpenMobile:
 
 /* ─── Notification Bell ─────────────────────────────────── */
 function NotificationBell() {
-  const navigate = useNavigate();
+  const { navigate } = useRouter();
   const [open, setOpen] = useState(false);
   const [readIds, setReadIds] = useState<Set<number>>(new Set([4])); // id 4 starts read
   const ref = useOutside(() => setOpen(false));
@@ -232,13 +223,13 @@ function NotificationBell() {
   const handleNotifClick = (n: (typeof NOTIFICATIONS)[0]) => {
     markRead(n.id);
     setOpen(false);
-    navigate({ to: n.to as any });
+    navigate(n.to);
   };
 
   const markAllRead = () => {
     setReadIds(new Set(NOTIFICATIONS.map((n) => n.id)));
     setOpen(false);
-    navigate({ to: "/app/notifications" as any });
+    navigate("/app/notifications");
   };
 
   return (
@@ -343,7 +334,7 @@ function NotificationBell() {
 
 /* ─── Profile Menu ──────────────────────────────────────── */
 function ProfileMenu({ user }: { user: ErpUser }) {
-  const navigate = useNavigate();
+  const { navigate } = useRouter();
   const [open, setOpen] = useState(false);
   const ref = useOutside(() => setOpen(false));
   const initials = user.name
@@ -355,7 +346,7 @@ function ProfileMenu({ user }: { user: ErpUser }) {
 
   const go = (to: string) => {
     setOpen(false);
-    navigate({ to: to as any });
+    navigate(to);
   };
 
   return (
@@ -401,7 +392,7 @@ function ProfileMenu({ user }: { user: ErpUser }) {
           <button
             onClick={() => {
               logout();
-              navigate({ to: "/login" });
+              navigate("/login");
             }}
             className="flex w-full items-center gap-2.5 border-t border-border px-4 py-2.5 text-sm font-medium text-destructive transition-colors hover:bg-destructive/5"
           >

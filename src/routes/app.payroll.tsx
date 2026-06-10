@@ -35,7 +35,156 @@ interface SalaryRow extends Record<string, unknown> {
 
 const inr = (n: number) => `₹${n.toLocaleString("en-IN")}`;
 
-function PayrollPage() {
+async function downloadSalarySlipPDF(row: SalaryRow) {
+  const [{ default: jsPDF }, { default: autoTable }] = await Promise.all([
+    import("jspdf"),
+    import("jspdf-autotable"),
+  ]);
+  const doc = new jsPDF({ unit: "pt", format: "a4" });
+  const W = doc.internal.pageSize.getWidth();
+
+  const BRAND = { r: 232, g: 155, b: 0 }; // turmeric #E89B00
+  const DARK = { r: 31, g: 31, b: 31 };
+  const LIGHT = { r: 250, g: 248, b: 245 };
+
+  // Background header band
+  doc.setFillColor(DARK.r, DARK.g, DARK.b);
+  doc.rect(0, 0, W, 100, "F");
+
+  // Brand accent bar
+  doc.setFillColor(BRAND.r, BRAND.g, BRAND.b);
+  doc.rect(0, 100, W, 4, "F");
+
+  // Company name
+  doc.setTextColor(255, 255, 255);
+  doc.setFont("helvetica", "bold");
+  doc.setFontSize(22);
+  doc.text("AGROZAAR FOODS LLP", 40, 48);
+
+  doc.setFont("helvetica", "normal");
+  doc.setFontSize(9);
+  doc.setTextColor(200, 195, 188);
+  doc.text("Premium Spices & Food Products", 40, 62);
+  doc.text("GSTIN: 24ABCDE1234F1Z5  |  FSSAI: 10023012000001", 40, 75);
+
+  // SALARY SLIP badge
+  doc.setFillColor(BRAND.r, BRAND.g, BRAND.b);
+  doc.roundedRect(W - 165, 30, 125, 34, 4, 4, "F");
+  doc.setTextColor(DARK.r, DARK.g, DARK.b);
+  doc.setFont("helvetica", "bold");
+  doc.setFontSize(13);
+  doc.text("SALARY SLIP", W - 102, 51, { align: "center" });
+
+  // Employee Info
+  let y = 130;
+  doc.setFont("helvetica", "bold");
+  doc.setFontSize(10);
+  doc.setTextColor(BRAND.r, BRAND.g, BRAND.b);
+  doc.text("EMPLOYEE DETAILS", 40, y);
+
+  doc.setFillColor(LIGHT.r, LIGHT.g, LIGHT.b);
+  doc.roundedRect(40, y + 8, W - 80, 56, 4, 4, "F");
+
+  doc.setFont("helvetica", "normal");
+  doc.setFontSize(9);
+  doc.setTextColor(DARK.r, DARK.g, DARK.b);
+
+  // Left column
+  doc.setFont("helvetica", "bold");
+  doc.text("Employee Name:", 50, y + 26);
+  doc.setFont("helvetica", "normal");
+  doc.text(row.name, 140, y + 26);
+
+  doc.setFont("helvetica", "bold");
+  doc.text("Employee Code:", 50, y + 44);
+  doc.setFont("helvetica", "normal");
+  doc.text(row.code, 140, y + 44);
+
+  // Right column
+  doc.setFont("helvetica", "bold");
+  doc.text("Department:", W / 2 + 10, y + 26);
+  doc.setFont("helvetica", "normal");
+  doc.text(row.dept, W / 2 + 90, y + 26);
+
+  doc.setFont("helvetica", "bold");
+  doc.text("Designation:", W / 2 + 10, y + 44);
+  doc.setFont("helvetica", "normal");
+  doc.text(row.designation, W / 2 + 90, y + 44);
+
+  // Salary Components Table
+  y = 215;
+  const earnings = [
+    ["Basic Salary", row.basic],
+    ["HRA", row.hra],
+    ["Allowances", row.allowances],
+  ];
+  const deductions = [
+    ["Deductions (Taxes, PF, etc.)", row.deductions],
+  ];
+
+  const fmtVal = (val: number) => "Rs. " + val.toFixed(2).replace(/\B(?=(\d{3})+(?!\d))/g, ",");
+
+  autoTable(doc, {
+    startY: y,
+    head: [["Component Type", "Description", "Amount"]],
+    body: [
+      ...earnings.map(([desc, amt]) => ["Earning", desc, fmtVal(amt as number)]),
+      ...deductions.map(([desc, amt]) => ["Deduction", desc, fmtVal(amt as number)]),
+    ],
+    headStyles: {
+      fillColor: [DARK.r, DARK.g, DARK.b],
+      textColor: [BRAND.r, BRAND.g, BRAND.b],
+      fontStyle: "bold",
+      fontSize: 9,
+    },
+    bodyStyles: { fontSize: 9, textColor: [DARK.r, DARK.g, DARK.b] },
+    alternateRowStyles: { fillColor: [LIGHT.r, LIGHT.g, LIGHT.b] },
+    columnStyles: {
+      0: { cellWidth: 100 },
+      1: { cellWidth: W - 320 },
+      2: { cellWidth: 140, halign: "right" },
+    },
+    margin: { left: 40, right: 40 },
+    tableLineWidth: 0.3,
+    tableLineColor: [220, 210, 195],
+  });
+
+  const finalY = (doc as any).lastAutoTable.finalY + 20;
+
+  // Net Pay Block
+  doc.setFillColor(DARK.r, DARK.g, DARK.b);
+  doc.roundedRect(W - 240, finalY, 200, 36, 4, 4, "F");
+
+  doc.setTextColor(BRAND.r, BRAND.g, BRAND.b);
+  doc.setFont("helvetica", "bold");
+  doc.setFontSize(10);
+  doc.text("NET TAKE-HOME PAY", W - 230, finalY + 22);
+
+  doc.setTextColor(255, 255, 255);
+  doc.setFont("helvetica", "bold");
+  doc.setFontSize(12);
+  doc.text(fmtVal(row.net), W - 50, finalY + 22, { align: "right" });
+
+  // Footer
+  const pageH = doc.internal.pageSize.getHeight();
+  doc.setFillColor(DARK.r, DARK.g, DARK.b);
+  doc.rect(0, pageH - 32, W, 32, "F");
+  doc.setFillColor(BRAND.r, BRAND.g, BRAND.b);
+  doc.rect(0, pageH - 32, W, 3, "F");
+  doc.setFont("helvetica", "italic");
+  doc.setFontSize(8);
+  doc.setTextColor(180, 170, 155);
+  doc.text(
+    "Confidential Document. This is a computer-generated salary slip and does not require a signature.",
+    W / 2,
+    pageH - 14,
+    { align: "center" },
+  );
+
+  doc.save(`Salary_Slip_${row.code}_${new Date().toISOString().split("T")[0]}.pdf`);
+}
+
+export default function PayrollPage() {
   const user = useSession();
   const [tab, setTab] = useState<"register" | "master" | "reports">("register");
   const [rows, setRows] = useState<SalaryRow[]>([]);
@@ -136,8 +285,11 @@ function PayrollPage() {
       key: "code",
       header: "Slip",
       align: "right",
-      render: () => (
-        <button className="inline-flex items-center gap-1 rounded-md border border-input px-2 py-1 text-xs hover:bg-secondary">
+      render: (row) => (
+        <button 
+          onClick={() => downloadSalarySlipPDF(row)}
+          className="inline-flex items-center gap-1 rounded-md border border-input px-2 py-1 text-xs hover:bg-secondary"
+        >
           <Download className="h-3.5 w-3.5" /> PDF
         </button>
       ),
@@ -234,7 +386,19 @@ function PayrollPage() {
                   </span>
                   <p className="text-sm font-medium text-foreground">{r}</p>
                 </div>
-                <button className="inline-flex items-center gap-1 rounded-md border border-input px-3 py-1.5 text-xs hover:bg-secondary">
+                <button 
+                  onClick={() => {
+                    const csv = `"Report","${r}"\n"Generated","${new Date().toLocaleString()}"\n"Company","Agrozaar Foods LLP"`;
+                    const blob = new Blob([csv], { type: 'text/csv' });
+                    const url = URL.createObjectURL(blob);
+                    const a = document.createElement('a');
+                    a.href = url;
+                    a.download = `${r.replace(/\s+/g, '_')}_${new Date().toISOString().split('T')[0]}.csv`;
+                    a.click();
+                    URL.revokeObjectURL(url);
+                  }}
+                  className="inline-flex items-center gap-1 rounded-md border border-input px-3 py-1.5 text-xs hover:bg-secondary"
+                >
                   <Download className="h-3.5 w-3.5" /> Export
                 </button>
               </div>

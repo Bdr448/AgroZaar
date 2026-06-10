@@ -1,5 +1,6 @@
 import { useSyncExternalStore } from "react";
 import { isSupabaseConfigured, supabase } from "../supabase";
+import { log } from "../logger";
 
 export type RoleId =
   | "super-admin"
@@ -23,114 +24,88 @@ export interface ErpUser {
 
 const listeners = new Set<() => void>();
 let cachedUser: ErpUser | null = null;
-let initialized = false;
 let fetchingUserId: string | null = null;
-const AUTH_TIMEOUT_MS = 12_000;
+let initialized = false;
+const TIMEOUT_MS = 12_000;
 
-function withTimeout<T>(promise: PromiseLike<T>, message: string): Promise<T> {
+function withTimeout<T>(p: PromiseLike<T>, msg: string): Promise<T> {
   return new Promise((resolve, reject) => {
-    const timer = globalThis.setTimeout(() => {
-      reject(new Error(message));
-    }, AUTH_TIMEOUT_MS);
-
-    promise.then(
-      (value) => {
-        globalThis.clearTimeout(timer);
-        resolve(value);
-      },
-      (error) => {
-        globalThis.clearTimeout(timer);
-        reject(error);
-      },
+    const t = setTimeout(() => reject(new Error(msg)), TIMEOUT_MS);
+    p.then(
+      (v) => { clearTimeout(t); resolve(v); },
+      (e) => { clearTimeout(t); reject(e); },
     );
   });
 }
 
-function emit() {
-  listeners.forEach((l) => l());
+function emit() { listeners.forEach((l) => l()); }
+
+export function subscribe(cb: () => void) {
+  listeners.add(cb);
+  return () => listeners.delete(cb);
 }
 
-export function subscribe(listener: () => void) {
-  listeners.add(listener);
-  return () => listeners.delete(listener);
-}
-
-// Fetch user profile from public.user_profiles
-async function fetchUserProfile(userId: string, email: string): Promise<ErpUser> {
+async function fetchProfile(userId: string, email: string): Promise<ErpUser> {
+  log.info("AUTH", `fetchProfile → ${userId}`);
+  const end = log.time("fetchProfile");
   try {
-    const { data: profile } = await withTimeout(
+    const { data, error } = await withTimeout(
       supabase.from("user_profiles").select("name, role").eq("id", userId).maybeSingle(),
-      "Profile request timed out.",
+      "Profile fetch timed out.",
     );
-
-    return {
-      id: userId,
-      name: profile?.name || "ERP User",
-      email,
-      role: (profile?.role || "warehouse") as RoleId,
-      loginAt: Date.now(),
-    };
-  } catch {
-    return {
-      id: userId,
-      name: "ERP User",
-      email,
-      role: "warehouse" as RoleId,
-      loginAt: Date.now(),
-    };
+    if (error) log.warn("AUTH", "profile query error", error);
+    log.info("AUTH", `fetchProfile ← ${JSON.stringify(data)}`);
+    end();
+    return { id: userId, name: data?.name || "ERP User", email, role: (data?.role || "warehouse") as RoleId, loginAt: Date.now() };
+  } catch (err) {
+    log.error("AUTH", "fetchProfile failed — fallback", err);
+    end();
+    return { id: userId, name: "ERP User", email, role: "warehouse", loginAt: Date.now() };
   }
 }
 
-// Defer profile fetch to prevent deadlocks in Supabase client request queue
-const fetchUserProfileDeferred = (userId: string, email: string) => {
-  if (cachedUser && cachedUser.id === userId) return;
-  if (fetchingUserId === userId) return;
-
+function fetchProfileDeferred(userId: string, email: string) {
+  if (cachedUser?.id === userId || fetchingUserId === userId) return;
   fetchingUserId = userId;
-
   setTimeout(async () => {
     try {
-      if (cachedUser && cachedUser.id === userId) return;
-      cachedUser = await fetchUserProfile(userId, email);
+      if (cachedUser?.id === userId) return;
+      cachedUser = await fetchProfile(userId, email);
+      log.info("AUTH", `profile ready → role=${cachedUser.role}`);
       emit();
     } finally {
       fetchingUserId = null;
     }
   }, 10);
-};
+}
 
-// Initialize session listener
-if (typeof window !== "undefined" && isSupabaseConfigured && !initialized) {
+// Called on first login form submit — keeps Supabase auth off the page-load critical path
+export function initAuthListener() {
+  if (initialized || !isSupabaseConfigured) return;
   initialized = true;
+  log.info("AUTH", "Starting auth listener...");
 
-  withTimeout(supabase.auth.getSession(), "Session request timed out.")
+  withTimeout(supabase.auth.getSession(), "getSession timed out.")
     .then(({ data: { session } }) => {
-      if (session?.user) {
-        fetchUserProfileDeferred(session.user.id, session.user.email || "");
-      }
+      log.info("AUTH", `getSession → ${session ? session.user.email : "no session"}`);
+      if (session?.user) fetchProfileDeferred(session.user.id, session.user.email ?? "");
     })
-    .catch(console.warn);
+    .catch((err) => log.warn("AUTH", "getSession failed", err));
 
-  supabase.auth.onAuthStateChange((_event, session) => {
+  supabase.auth.onAuthStateChange((event, session) => {
+    log.event("AUTH", `onAuthStateChange → ${event} user=${session?.user?.email ?? "null"}`);
     if (session?.user) {
-      fetchUserProfileDeferred(session.user.id, session.user.email || "");
+      fetchProfileDeferred(session.user.id, session.user.email ?? "");
     } else {
       const wasLoggedIn = cachedUser !== null;
       cachedUser = null;
-      // Only emit if we actually had a user before (logout), not on initial load
-      if (wasLoggedIn) emit();
+      if (wasLoggedIn) { log.info("AUTH", "logged out"); emit(); }
     }
   });
 }
 
-export function getSession(): ErpUser | null {
-  return cachedUser;
-}
-
-export function isSessionExpired(): boolean {
-  // Supabase manages session tokens automatically
-  return false;
-}
+export function getSession(): ErpUser | null { return cachedUser; }
+export function isSessionExpired(): boolean { return false; }
 
 export const ROLE_NAMES_BY_ROLE: Record<RoleId, string> = {
   "super-admin": "Sharad Patel",
@@ -145,36 +120,41 @@ export const ROLE_NAMES_BY_ROLE: Record<RoleId, string> = {
   retailer: "Retailer User",
 };
 
-export async function login(email: string, role: RoleId, password?: string) {
+export async function login(email: string, _role: RoleId, password?: string) {
+  log.group(`LOGIN — ${email}`);
   if (!isSupabaseConfigured) {
-    throw new Error(
-      "Supabase is not configured. Add VITE_SUPABASE_URL and VITE_SUPABASE_ANON_KEY in Render, then redeploy.",
-    );
+    const msg = "Supabase not configured. Set VITE_SUPABASE_URL and VITE_SUPABASE_ANON_KEY.";
+    log.error("AUTH", msg);
+    log.groupEnd();
+    throw new Error(msg);
   }
 
+  log.info("AUTH", "signInWithPassword...");
+  const end = log.time("signInWithPassword");
   const { data, error } = await withTimeout(
-    supabase.auth.signInWithPassword({
-      email,
-      password: password || "demo-password-123",
-    }),
-    "Login request timed out. Please check the Vercel Supabase environment variables and try again.",
+    supabase.auth.signInWithPassword({ email, password: password || "demo-password-123" }),
+    "Login timed out.",
   );
+  end();
 
-  if (error) throw error;
+  if (error) { log.error("AUTH", error.message, error); log.groupEnd(); throw error; }
+  log.info("AUTH", `signed in → userId=${data.user?.id}`);
 
   if (data.user) {
     fetchingUserId = data.user.id;
     try {
-      cachedUser = await fetchUserProfile(data.user.id, data.user.email || email);
+      cachedUser = await fetchProfile(data.user.id, data.user.email || email);
+      log.info("AUTH", `login complete → role=${cachedUser.role}`);
       emit();
+      log.groupEnd();
       return cachedUser;
     } finally {
       fetchingUserId = null;
     }
   }
 
-  // Fallback — if Supabase returns no user but also no error (edge case)
-  throw new Error("Login failed — no user returned. Check Supabase credentials.");
+  log.groupEnd();
+  throw new Error("Login failed — no user returned.");
 }
 
 export function logout() {

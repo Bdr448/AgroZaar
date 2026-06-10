@@ -12,9 +12,9 @@
   --radius-2xl: calc(var(--radius) + 8px);
   --radius-3xl: calc(var(--radius) + 12px);
 
-  --font-sans: "Manrope", system-ui, sans-serif;
-  --font-heading: "Poppins", system-ui, sans-serif;
-  --font-body: "Inter", system-ui, sans-serif;
+  --font-sans: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  --font-heading: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  --font-body: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
 
   --color-background: var(--background);
   --color-foreground: var(--foreground);
@@ -107,13 +107,19 @@
     font-family: var(--font-body);
     -webkit-font-smoothing: antialiased;
   }
-  h1,
-  h2,
-  h3,
-  h4,
-  h5 {
+  h1, h2, h3, h4, h5 {
     font-family: var(--font-heading);
     letter-spacing: -0.02em;
+  }
+  /* Force immediate input responsiveness — disable will-change and transforms */
+  input, select, textarea, button {
+    will-change: auto;
+    transform: none;
+    transition: none;
+  }
+  /* Re-enable only essential focus ring transitions */
+  input:focus, select:focus, textarea:focus {
+    transition: box-shadow 0.15s ease, border-color 0.15s ease;
   }
 }
 

@@ -1,4 +1,5 @@
-import { createFileRoute, useNavigate, Link } from "@tanstack/react-router";
+import { createFileRoute } from "@tanstack/react-router";
+import { useNavigate, Link } from "@/lib/simple-router";
 import { useState } from "react";
 import { Lock, Eye, EyeOff, ArrowLeft } from "lucide-react";
 import { toast } from "sonner";

@@ -1,4 +1,5 @@
-import { createFileRoute, useRouterState } from "@tanstack/react-router";
+import { createFileRoute } from "@tanstack/react-router";
+import { useRouter } from "@/lib/simple-router";
 import {
   CustomersModule,
   SuppliersModule,
@@ -380,8 +381,8 @@ function MyOrdersModule() {
 }
 
 /* ── Router ── */
-function ModulePage() {
-  const pathname = useRouterState({ select: (s) => s.location.pathname });
+export default function ModulePage() {
+  const { route: pathname } = useRouter();
   const normalizedPath = pathname.toLowerCase().replace(/\/$/, "");
 
   switch (normalizedPath) {

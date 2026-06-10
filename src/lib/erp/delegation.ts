@@ -160,14 +160,14 @@ async function fetchAuditLog() {
   }
 }
 
-// Initialize Realtime subscription and initial load
-if (typeof window !== "undefined" && !initialized) {
+// Initialize Realtime subscription and initial load — ONLY when user is authenticated
+export function initDelegationStore() {
+  if (initialized) return;
   initialized = true;
 
   fetchDelegations();
   fetchAuditLog();
 
-  // Subscribe to delegations changes
   supabase
     .channel("schema-db-changes")
     .on("postgres_changes", { event: "*", schema: "public", table: "delegations" }, () => {

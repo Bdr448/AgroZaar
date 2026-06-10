@@ -1,4 +1,5 @@
-import { createFileRoute, Link } from "@tanstack/react-router";
+import { createFileRoute } from "@tanstack/react-router";
+import { Link } from "@/lib/simple-router";
 import { Clock, LogIn } from "lucide-react";
 import { AuthShell } from "@/components/erp/AuthShell";
 

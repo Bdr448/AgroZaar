@@ -1,4 +1,5 @@
-import { createFileRoute, Navigate } from "@tanstack/react-router";
+import { createFileRoute } from "@tanstack/react-router";
+import { Navigate } from "@/lib/simple-router";
 import { useState } from "react";
 import { ShieldCheck, Plus, Ban, History, Clock } from "lucide-react";
 import { PageHeader, Panel, StatusBadge, StatCard } from "@/components/erp/widgets";
@@ -34,7 +35,7 @@ const ASSIGNABLE_ROLES: RoleId[] = [
   "admin",
 ];
 
-function DelegatedAuthorityPage() {
+export default function DelegatedAuthorityPage() {
   const user = useSession();
   const delegations = useDelegations();
   const audit = useAuditLog();

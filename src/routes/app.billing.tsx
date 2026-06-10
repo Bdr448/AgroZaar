@@ -3,8 +3,6 @@ import { useState } from "react";
 import { CreditCard, Plus, Search, Filter, Download, X, Trash2, PlusCircle } from "lucide-react";
 import { useSession } from "@/lib/erp/auth";
 import type { RoleId } from "@/lib/erp/auth";
-import jsPDF from "jspdf";
-import autoTable from "jspdf-autotable";
 
 export const Route = createFileRoute("/app/billing")({
   component: BillingPage,
@@ -76,7 +74,12 @@ const DARK = { r: 31, g: 31, b: 31 };
 const LIGHT = { r: 250, g: 248, b: 245 };
 
 /* ─── PDF Generator ─────────────────────────────────────── */
-function downloadInvoicePDF(inv: Invoice, role: RoleId) {
+async function downloadInvoicePDF(inv: Invoice, role: RoleId) {
+  // Load jsPDF only on demand — keeps it out of the login page bundle
+  const [{ default: jsPDF }, { default: autoTable }] = await Promise.all([
+    import("jspdf"),
+    import("jspdf-autotable"),
+  ]);
   const doc = new jsPDF({ unit: "pt", format: "a4" });
   const W = doc.internal.pageSize.getWidth();
   const { sub, discAmt, taxable, taxAmt, total } = calcInvoice(inv);
@@ -374,7 +377,7 @@ const emptyInvoice = (): Invoice => ({
 });
 
 /* ─── Main Page ──────────────────────────────────────────── */
-function BillingPage() {
+export default function BillingPage() {
   const user = useSession();
   const role: RoleId = user?.role ?? "warehouse";
   const [invoices, setInvoices] = useState<Invoice[]>(SEED);

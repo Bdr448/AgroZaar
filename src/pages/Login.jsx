@@ -1,91 +1,72 @@
-import { createFileRoute, useNavigate, Link } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import { Leaf, Lock, Mail, ShieldCheck, Eye, EyeOff, Globe, Award } from "lucide-react";
 import { toast } from "sonner";
-import { login, useSession, type RoleId } from "@/lib/erp/auth";
+import { login, useSession } from "@/lib/erp/auth";
 import { ROLE_LABELS } from "@/lib/erp/roles";
-import heroTurmeric from "@/assets/hero-turmeric.jpg";
+import { useRouter } from "@/lib/simple-router";
 import { log } from "@/lib/logger";
+import heroTurmeric from "@/assets/hero-turmeric.jpg";
 
-export const Route = createFileRoute("/login")({
-  head: () => ({
-    meta: [
-      { title: "Secure ERP Login — Agrozaar Foods LLP" },
-      {
-        name: "description",
-        content: "Secure access to the Agrozaar Foods LLP enterprise resource planning system.",
-      },
-    ],
-  }),
-  component: LoginPage,
-});
-
-function LoginPage() {
-  const navigate = useNavigate();
+export default function LoginPage() {
+  const { navigate } = useRouter();
   const user = useSession();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
-  const [role, setRole] = useState<RoleId>("super-admin");
+  const [role, setRole] = useState("super-admin");
   const [remember, setRemember] = useState(true);
   const [show, setShow] = useState(false);
   const [loading, setLoading] = useState(false);
 
   useEffect(() => {
     if (user) {
-      log.info("LOGIN", `User logged in — redirecting to dashboard (email=${user.email})`);
-      navigate({ to: "/app/dashboard" });
+      log.info("LOGIN", `User logged in — redirecting (email=${user.email})`);
+      navigate("/app/dashboard");
     }
   }, [user, navigate]);
 
-  const onSubmit = async (e: React.FormEvent) => {
+  const onSubmit = async (e) => {
     e.preventDefault();
     log.event("LOGIN", `Form submitted — email=${email} passwordLength=${password.length}`);
 
     if (!email || !password) {
-      log.warn("LOGIN", "Validation failed — missing email or password");
+      log.warn("LOGIN", "Validation failed");
       toast.error("Please enter your email and password.");
       return;
     }
 
     setLoading(true);
-    log.info("LOGIN", "setLoading(true) — calling login()");
+    log.info("LOGIN", "Calling login()");
     const end = log.time("full login flow");
 
     try {
       await login(email, role, password);
       end();
-      log.info("LOGIN", "login() resolved — showing success toast");
+      log.info("LOGIN", "Login success");
       toast.success("Secure access granted.");
-      // Don't navigate here — let useEffect handle it when user updates
-    } catch (err: unknown) {
+    } catch (err) {
       end();
       const msg = err instanceof Error ? err.message : String(err);
-      log.error("LOGIN", `login() threw — ${msg}`, err);
+      log.error("LOGIN", msg, err);
 
       if (msg.includes("Invalid login") || msg.includes("invalid_credentials")) {
         toast.error("Email ya password galat hai. Check karo.");
       } else if (msg.includes("Email not confirmed")) {
         toast.error("Email verify nahi hua. Inbox check karo.");
-      } else if (msg.includes("fetch") || msg.includes("network") || msg.includes("Failed to fetch")) {
-        toast.error("Network error — internet connection check karo ya thodi der baad try karo.");
+      } else if (msg.includes("fetch") || msg.includes("network")) {
+        toast.error("Network error — internet connection check karo.");
       } else {
         toast.error(msg || "Login nahi hua. Dobara try karo.");
       }
     } finally {
-      log.info("LOGIN", "setLoading(false) — button re-enabled");
+      log.info("LOGIN", "setLoading(false)");
       setLoading(false);
     }
   };
 
   return (
     <div className="grid min-h-screen lg:grid-cols-2">
-      {/* Branding side */}
       <div className="relative hidden overflow-hidden lg:block">
-        <img
-          src={heroTurmeric}
-          alt="Premium spice manufacturing"
-          className="absolute inset-0 h-full w-full object-cover"
-        />
+        <img src={heroTurmeric} alt="Premium spice manufacturing" className="absolute inset-0 h-full w-full object-cover" />
         <div className="absolute inset-0 bg-gradient-to-br from-spice-brown/85 via-spice-brown/70 to-spice-brown/90" />
         <div className="relative flex h-full flex-col justify-between p-12 text-white">
           <div className="flex items-center gap-3">
@@ -94,64 +75,42 @@ function LoginPage() {
             </span>
             <span className="flex flex-col leading-none">
               <span className="font-heading text-xl font-extrabold">Agrozaar</span>
-              <span className="text-[0.65rem] font-medium tracking-[0.22em] text-white/70">
-                FOODS LLP
-              </span>
+              <span className="text-[0.65rem] font-medium tracking-[0.22em] text-white/70">FOODS LLP</span>
             </span>
           </div>
-
           <div className="max-w-md">
-            <h1 className="font-heading text-4xl font-extrabold leading-tight">
-              Pure Spices.
-              <br />
-              Pure Trust.
-            </h1>
-            <p className="mt-4 text-white/80">
-              Enterprise resource planning for premium spice manufacturing and export operations.
-            </p>
+            <h1 className="font-heading text-4xl font-extrabold leading-tight">Pure Spices.<br />Pure Trust.</h1>
+            <p className="mt-4 text-white/80">Enterprise resource planning for premium spice manufacturing and export operations.</p>
             <div className="mt-8 flex flex-wrap gap-3">
               {[
                 { icon: ShieldCheck, label: "ISO Quality" },
                 { icon: Globe, label: "Export Ready" },
                 { icon: Award, label: "FSSAI Certified" },
               ].map((b) => (
-                <span
-                  key={b.label}
-                  className="inline-flex items-center gap-2 rounded-full bg-white/10 px-4 py-2 text-sm font-medium backdrop-blur-sm"
-                >
+                <span key={b.label} className="inline-flex items-center gap-2 rounded-full bg-white/10 px-4 py-2 text-sm font-medium backdrop-blur-sm">
                   <b.icon className="h-4 w-4" /> {b.label}
                 </span>
               ))}
             </div>
           </div>
-
-          <p className="text-sm text-white/60">
-            © {new Date().getFullYear()} Agrozaar Foods LLP. Confidential ERP system.
-          </p>
+          <p className="text-sm text-white/60">© {new Date().getFullYear()} Agrozaar Foods LLP. Confidential ERP system.</p>
         </div>
       </div>
 
-      {/* Login form side */}
       <div className="flex items-center justify-center bg-background px-6 py-12">
         <div className="w-full max-w-md">
           <div className="mb-8 flex items-center gap-3 lg:hidden">
             <span className="flex h-10 w-10 items-center justify-center rounded-lg bg-primary text-primary-foreground">
               <Leaf className="h-5 w-5" />
             </span>
-            <span className="font-heading text-lg font-extrabold text-spice-brown">
-              Agrozaar Foods LLP
-            </span>
+            <span className="font-heading text-lg font-extrabold text-spice-brown">Agrozaar Foods LLP</span>
           </div>
 
           <div className="mb-2 inline-flex items-center gap-2 rounded-full bg-secondary px-3 py-1 text-xs font-semibold text-spice-brown">
             <Lock className="h-3.5 w-3.5" /> Secure ERP Access
           </div>
-          <h2 className="font-heading text-2xl font-bold text-foreground">
-            Sign in to your workspace
-          </h2>
-          <p className="mt-1 text-sm text-muted-foreground">
-            Welcome back. Please enter your credentials to continue.
-          </p>
+          <h2 className="font-heading text-2xl font-bold text-foreground">Sign in to your workspace</h2>
+          <p className="mt-1 text-sm text-muted-foreground">Welcome back. Please enter your credentials to continue.</p>
 
           <form onSubmit={onSubmit} className="mt-8 space-y-5">
             <Field label="Email Address">
@@ -194,13 +153,11 @@ function LoginPage() {
             <Field label="Access Role (demo)">
               <select
                 value={role}
-                onChange={(e) => setRole(e.target.value as RoleId)}
+                onChange={(e) => setRole(e.target.value)}
                 className="w-full rounded-lg border border-input bg-card px-3 py-2.5 text-sm shadow-soft outline-none focus:border-primary focus:ring-2 focus:ring-primary/20"
               >
                 {Object.entries(ROLE_LABELS).map(([id, label]) => (
-                  <option key={id} value={id}>
-                    {label}
-                  </option>
+                  <option key={id} value={id}>{label}</option>
                 ))}
               </select>
             </Field>
@@ -215,15 +172,13 @@ function LoginPage() {
                 />
                 Remember me
               </label>
-              <Link to="/forgot-password" className="font-medium text-primary hover:underline">
-                Forgot password?
-              </Link>
+              <a href="#/forgot-password" className="font-medium text-primary hover:underline">Forgot password?</a>
             </div>
 
             <button
               type="submit"
               disabled={loading}
-              className="flex w-full items-center justify-center gap-2 rounded-lg bg-primary py-3 text-sm font-semibold text-primary-foreground shadow-soft transition-all hover:bg-primary/90 disabled:opacity-60"
+              className="flex w-full items-center justify-center gap-2 rounded-lg bg-primary py-3 text-sm font-semibold text-primary-foreground shadow-soft hover:bg-primary/90 disabled:opacity-60"
             >
               <ShieldCheck className="h-4 w-4" /> {loading ? "Authenticating…" : "Secure Login"}
             </button>
@@ -238,7 +193,7 @@ function LoginPage() {
   );
 }
 
-function Field({ label, children }: { label: string; children: React.ReactNode }) {
+function Field({ label, children }) {
   return (
     <div className="space-y-1.5">
       <label className="text-sm font-medium text-foreground">{label}</label>

@@ -1,4 +1,4 @@
-import { Link, useRouterState } from "@tanstack/react-router";
+import { Link, useRouter } from "@/lib/simple-router";
 import { useState } from "react";
 import { Leaf, ChevronDown, ChevronLeft, X } from "lucide-react";
 import { cn } from "@/lib/utils";
@@ -21,7 +21,8 @@ export function ErpSidebar({
   mobileOpen: boolean;
   onCloseMobile: () => void;
 }) {
-  const pathname = useRouterState({ select: (s) => s.location.pathname });
+  const { route } = useRouter();
+  const pathname = route;
 
   return (
     <>

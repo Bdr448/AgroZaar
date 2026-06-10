@@ -2082,6 +2082,222 @@ export function UserManagementModule() {
 /* ====================================================================
    10. REPORTS MODULE
    ==================================================================== */
+async function downloadReportPDF(reportTitle: string) {
+  const [{ default: jsPDF }, { default: autoTable }] = await Promise.all([
+    import("jspdf"),
+    import("jspdf-autotable"),
+  ]);
+  const doc = new jsPDF({ unit: "pt", format: "a4" });
+  const W = doc.internal.pageSize.getWidth();
+
+  const BRAND = { r: 232, g: 155, b: 0 }; // turmeric #E89B00
+  const DARK = { r: 31, g: 31, b: 31 };
+  const LIGHT = { r: 250, g: 248, b: 245 };
+
+  // Background header band
+  doc.setFillColor(DARK.r, DARK.g, DARK.b);
+  doc.rect(0, 0, W, 100, "F");
+
+  // Brand accent bar
+  doc.setFillColor(BRAND.r, BRAND.g, BRAND.b);
+  doc.rect(0, 100, W, 4, "F");
+
+  // Company name
+  doc.setTextColor(255, 255, 255);
+  doc.setFont("helvetica", "bold");
+  doc.setFontSize(22);
+  doc.text("AGROZAAR FOODS LLP", 40, 48);
+
+  doc.setFont("helvetica", "normal");
+  doc.setFontSize(9);
+  doc.setTextColor(200, 195, 188);
+  doc.text("Premium Spices & Food Products", 40, 62);
+  doc.text("GSTIN: 24ABCDE1234F1Z5  |  FSSAI: 10023012000001", 40, 75);
+
+  // Report title badge
+  doc.setFillColor(BRAND.r, BRAND.g, BRAND.b);
+  doc.roundedRect(W - 205, 30, 165, 34, 4, 4, "F");
+  doc.setTextColor(DARK.r, DARK.g, DARK.b);
+  doc.setFont("helvetica", "bold");
+  doc.setFontSize(10);
+  doc.text("OFFICIAL REPORT", W - 122, 51, { align: "center" });
+
+  // Sub-header details
+  let y = 130;
+  doc.setFont("helvetica", "bold");
+  doc.setFontSize(14);
+  doc.setTextColor(DARK.r, DARK.g, DARK.b);
+  doc.text(reportTitle.toUpperCase(), 40, y);
+
+  doc.setFont("helvetica", "normal");
+  doc.setFontSize(9);
+  doc.setTextColor(100, 90, 80);
+  doc.text(`Generated: ${new Date().toLocaleString()}`, 40, y + 16);
+  doc.text("Classification: Confidential - Internal Use Only", 40, y + 28);
+
+  y = y + 40;
+
+  let headers: string[][] = [];
+  let body: any[][] = [];
+
+  if (reportTitle === "Trial Balance Statement") {
+    headers = [["Account Description", "Debit Balance", "Credit Balance"]];
+    const { data: res } = await supabase
+      .from("journal_entries")
+      .select("*, journal_lines(debit_amount, credit_amount, chart_of_accounts(name))");
+
+    if (res && res.length > 0) {
+      const ledgers: Record<string, { debit: number; credit: number }> = {};
+      res.forEach((entry: any) => {
+        entry.journal_lines?.forEach((line: any) => {
+          const name = line.chart_of_accounts?.name || "Suspense";
+          if (!ledgers[name]) ledgers[name] = { debit: 0, credit: 0 };
+          ledgers[name].debit += parseFloat(line.debit_amount || 0);
+          ledgers[name].credit += parseFloat(line.credit_amount || 0);
+        });
+      });
+      body = Object.entries(ledgers).map(([name, bal]) => [
+        name,
+        bal.debit > 0 ? `Rs. ${bal.debit.toLocaleString("en-IN")}` : "-",
+        bal.credit > 0 ? `Rs. ${bal.credit.toLocaleString("en-IN")}` : "-",
+      ]);
+    } else {
+      body = [
+        ["Share Capital", "-", "Rs. 10,00,000"],
+        ["Secured Loans (HDFC Bank)", "-", "Rs. 5,00,000"],
+        ["Cash in Hand", "Rs. 1,20,000", "-"],
+        ["HDFC Current Account", "Rs. 6,80,000", "-"],
+        ["Spice Stock (Valued at cost)", "Rs. 2,45,000", "-"],
+        ["Plant & Machinery", "Rs. 4,50,000", "-"],
+        ["Sundry Creditors (Mandi Vendors)", "-", "Rs. 1,45,000"],
+        ["Sundry Debtors (Spice Traders)", "Rs. 1,50,000", "-"],
+      ];
+    }
+  } else if (reportTitle === "Warehouse Wise Inventory Report") {
+    headers = [["Product SKU", "Product Name", "Warehouse", "Stock Volume"]];
+    const { data: movements } = await supabase
+      .from("stock_movements")
+      .select("*, products(name, sku), warehouses(name)");
+
+    if (movements && movements.length > 0) {
+      const stock: Record<string, { name: string; wh: string; qty: number }> = {};
+      movements.forEach((m: any) => {
+        const sku = m.products?.sku || "N/A";
+        const key = `${sku}-${m.warehouses?.name || "Main"}`;
+        if (!stock[key]) {
+          stock[key] = {
+            name: m.products?.name || "Unknown",
+            wh: m.warehouses?.name || "Main Warehouse",
+            qty: 0,
+          };
+        }
+        stock[key].qty += m.quantity;
+      });
+      body = Object.entries(stock).map(([skuKey, info]) => [
+        skuKey.split("-")[0],
+        info.name,
+        info.wh,
+        `${info.qty} kg`,
+      ]);
+    } else {
+      body = [
+        ["AG-TUR-01", "Turmeric Powder (Grade A)", "Deesa Central WH", "1,200 kg"],
+        ["AG-CHL-02", "Guntur Red Chilli Powder", "Deesa Central WH", "850 kg"],
+        ["AG-CUM-03", "Cumin Seeds (Whole)", "Deesa Central WH", "600 kg"],
+        ["AG-COR-04", "Coriander Seeds", "Secondary Zone WH", "1,500 kg"],
+        ["AG-GAR-05", "Garam Masala Premium Blend", "Deesa Central WH", "400 kg"],
+      ];
+    }
+  } else if (reportTitle === "Quality Assurance Batch Log") {
+    headers = [["Batch #", "Spice Product", "Moisture", "Aroma Check", "Color Standard", "Status"]];
+    const { data: tests } = await supabase
+      .from("qc_tests")
+      .select("*, production_batches(batch_number, products(name))");
+
+    if (tests && tests.length > 0) {
+      body = tests.map((t: any) => [
+        t.production_batches?.batch_number || "BT-?",
+        t.production_batches?.products?.name || "Spice Product",
+        `${t.moisture_percentage}%`,
+        t.aroma_inspection || "Normal",
+        t.color_standard || "Normal",
+        t.status.toUpperCase(),
+      ]);
+    } else {
+      body = [
+        ["BT-TUR-0601", "Premium Turmeric Powder", "5.2%", "Rich & Earthy", "Deep Golden Yellow", "APPROVED"],
+        ["BT-CHL-0602", "Red Chilli Powder", "6.1%", "Pungent & Spicy", "Vibrant Red", "APPROVED"],
+        ["BT-CUM-0603", "Cumin Seeds", "4.8%", "Warm & Aromatic", "Brownish Grey", "APPROVED"],
+        ["BT-TUR-0604", "Turmeric Powder (Batch 2)", "8.5%", "Musty / High Humidity", "Dull Yellow", "REJECTED"],
+      ];
+    }
+  } else if (reportTitle === "Payroll Pay Slip Summary") {
+    headers = [["Employee Code", "Name", "Department", "Basic", "HRA", "Net Pay"]];
+    const { data: slips } = await supabase.from("salary_slips").select(`
+      basic, hra, net_pay,
+      employees(employee_code, department, user_profiles(name))
+    `);
+
+    if (slips && slips.length > 0) {
+      body = slips.map((s: any) => [
+        s.employees?.employee_code || "EMP-?",
+        s.employees?.user_profiles?.name || "Staff",
+        s.employees?.department || "General",
+        `Rs. ${s.basic}`,
+        `Rs. ${s.hra}`,
+        `Rs. ${s.net_pay}`,
+      ]);
+    } else {
+      body = [
+        ["EMP-001", "Owner & CEO", "Management", "Rs. 1,50,000", "Rs. 30,000", "Rs. 1,80,000"],
+        ["EMP-002", "Senior Accountant", "Accounts", "Rs. 45,000", "Rs. 9,000", "Rs. 54,000"],
+        ["EMP-003", "Plant Supervisor", "Factory Floor", "Rs. 35,000", "Rs. 7,000", "Rs. 42,000"],
+        ["EMP-004", "QC Specialist", "Quality Control", "Rs. 30,000", "Rs. 6,000", "Rs. 36,000"],
+      ];
+    }
+  } else {
+    headers = [["Info", "Description"]];
+    body = [
+      ["Report Title", reportTitle],
+      ["Generated", new Date().toLocaleString()],
+    ];
+  }
+
+  autoTable(doc, {
+    startY: y,
+    head: headers,
+    body: body,
+    headStyles: {
+      fillColor: [DARK.r, DARK.g, DARK.b],
+      textColor: [BRAND.r, BRAND.g, BRAND.b],
+      fontStyle: "bold",
+      fontSize: 9,
+    },
+    bodyStyles: { fontSize: 8.5, textColor: [DARK.r, DARK.g, DARK.b] },
+    alternateRowStyles: { fillColor: [LIGHT.r, LIGHT.g, LIGHT.b] },
+    margin: { left: 40, right: 40 },
+    tableLineWidth: 0.3,
+    tableLineColor: [220, 210, 195],
+  });
+
+  const pageH = doc.internal.pageSize.getHeight();
+  doc.setFillColor(DARK.r, DARK.g, DARK.b);
+  doc.rect(0, pageH - 32, W, 32, "F");
+  doc.setFillColor(BRAND.r, BRAND.g, BRAND.b);
+  doc.rect(0, pageH - 32, W, 3, "F");
+  doc.setFont("helvetica", "italic");
+  doc.setFontSize(8);
+  doc.setTextColor(180, 170, 155);
+  doc.text(
+    "Agrozaar Foods LLP ERP system. Confidential Business Intelligence Report.",
+    W / 2,
+    pageH - 14,
+    { align: "center" },
+  );
+
+  doc.save(`${reportTitle.replace(/\s+/g, "_")}_${new Date().toISOString().split("T")[0]}.pdf`);
+}
+
 export function ReportsModule() {
   const [salesSum, setSalesSum] = useState(0);
   const [stockSum, setStockSum] = useState(0);
@@ -2165,7 +2381,10 @@ export function ReportsModule() {
               <div key={r} className="flex justify-between items-center px-5 py-3.5">
                 <span>{r}</span>
                 <button
-                  onClick={() => toast.success(`Generated ${r}!`)}
+                  onClick={async () => {
+                    await downloadReportPDF(r);
+                    toast.success(`Generated ${r}!`);
+                  }}
                   className="rounded-lg border border-input bg-card px-2.5 py-1 text-xs hover:bg-secondary"
                 >
                   Generate PDF

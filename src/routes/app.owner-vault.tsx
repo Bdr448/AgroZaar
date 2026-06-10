@@ -1,4 +1,5 @@
-import { createFileRoute, Navigate } from "@tanstack/react-router";
+import { createFileRoute } from "@tanstack/react-router";
+import { Navigate } from "@/lib/simple-router";
 import { useState } from "react";
 import {
   Lock,
@@ -62,7 +63,7 @@ const VAULT_ITEMS = [
   },
 ];
 
-function OwnerVaultPage() {
+export default function OwnerVaultPage() {
   const user = useSession();
   const [revealed, setRevealed] = useState(false);
 

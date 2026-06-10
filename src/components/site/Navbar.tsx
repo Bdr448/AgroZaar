@@ -1,4 +1,4 @@
-import { Link } from "@tanstack/react-router";
+import { Link } from "../../lib/simple-router";
 import { useState } from "react";
 import { Menu, X, Leaf } from "lucide-react";
 
