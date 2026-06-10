@@ -102,9 +102,45 @@ export function Footer() {
           </div>
         </div>
 
-        <div className="mt-12 flex flex-col items-center justify-between gap-3 border-t border-primary-foreground/15 pt-7 text-sm text-primary-foreground/60 sm:flex-row">
-          <p>© {new Date().getFullYear()} Agrozaar Foods LLP. All rights reserved.</p>
-          <p>Unjha &amp; Khoraj, Gujarat, India</p>
+        <div className="mt-12 border-t border-primary-foreground/15 pt-8 text-xs text-primary-foreground/60">
+          <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
+            <div>
+              <p className="font-semibold text-primary">Corporate Information</p>
+              <p className="mt-2">
+                <span className="font-medium text-primary-foreground/85">Entity Name:</span> Agrozaar Foods LLP
+              </p>
+              <p className="mt-1">
+                <span className="font-medium text-primary-foreground/85">LLPIN:</span> ACY-2639
+              </p>
+              <p className="mt-1">
+                <span className="font-medium text-primary-foreground/85">Incorporated on:</span> 15 May 2026
+              </p>
+            </div>
+            <div>
+              <p className="font-semibold text-primary">Registered Office</p>
+              <p className="mt-2 leading-relaxed">
+                GF 33 Samay Arcade, Patan Road,<br />
+                Unjha, Mehsana, Gujarat, India - 384170
+              </p>
+              <p className="mt-1">
+                <span className="font-medium text-primary-foreground/85">Processing Unit:</span> Khoraj, Gandhinagar, Gujarat
+              </p>
+            </div>
+            <div>
+              <p className="font-semibold text-primary">Designated Partners</p>
+              <p className="mt-2">
+                Meet Harshadkumar Patel<br />
+                Sharad Harshadkumar Patel
+              </p>
+              <p className="mt-2 text-[10px] text-primary-foreground/45 leading-normal">
+                Agrozaar Foods LLP is a registered Limited Liability Partnership under the Ministry of Corporate Affairs (MCA), Government of India.
+              </p>
+            </div>
+          </div>
+          <div className="mt-8 flex flex-col items-center justify-between gap-3 border-t border-primary-foreground/10 pt-6 text-sm sm:flex-row">
+            <p>© {new Date().getFullYear()} Agrozaar Foods LLP. All rights reserved.</p>
+            <p className="text-xs">Premium Spice Manufacturing &amp; Global B2B Export</p>
+          </div>
         </div>
       </div>
     </footer>
