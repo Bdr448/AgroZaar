@@ -87,14 +87,6 @@ const fetchUserProfileDeferred = (userId: string, email: string) => {
 // Initialize session listener
 if (typeof window !== "undefined" && isSupabaseConfigured && !initialized) {
   initialized = true;
-  supabase.auth.onAuthStateChange(async (_event, session) => {
-    if (session?.user) {
-      fetchUserProfileDeferred(session.user.id, session.user.email || "");
-    } else {
-      cachedUser = null;
-      emit();
-    }
-  });
 
   withTimeout(supabase.auth.getSession(), "Session request timed out.")
     .then(({ data: { session } }) => {
@@ -103,6 +95,16 @@ if (typeof window !== "undefined" && isSupabaseConfigured && !initialized) {
       }
     })
     .catch(console.warn);
+
+  supabase.auth.onAuthStateChange((_event, session) => {
+    if (session?.user) {
+      fetchUserProfileDeferred(session.user.id, session.user.email || "");
+    } else {
+      cachedUser = null;
+      // Only emit if we actually had a user before (logout), not on initial load
+      if (cachedUser !== null) emit();
+    }
+  });
 }
 
 export function getSession(): ErpUser | null {

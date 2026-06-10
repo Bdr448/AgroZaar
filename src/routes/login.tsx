@@ -27,7 +27,7 @@ function LoginPage() {
 
   useEffect(() => {
     if (getSession()) navigate({ to: "/app/dashboard" });
-  }, [navigate]);
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   const onSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
