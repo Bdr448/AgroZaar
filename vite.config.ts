@@ -12,4 +12,12 @@ export default defineConfig({
     // nitro/vite builds from this
     server: { entry: "server" },
   },
+  vite: {
+    server: {
+      allowedHosts: ["agrozaar.onrender.com"],
+    },
+    preview: {
+      allowedHosts: ["agrozaar.onrender.com"],
+    },
+  },
 });
