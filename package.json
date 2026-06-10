@@ -7,7 +7,7 @@
     "dev": "vite dev",
     "build": "vite build --config vite.spa.config.ts && node scripts/generate-index.mjs",
     "build:dev": "vite build --mode development",
-    "preview": "vite preview",
+    "preview": "vite preview --config vite.spa.config.ts --port 10000 --host",
     "lint": "eslint .",
     "format": "prettier --write ."
   },

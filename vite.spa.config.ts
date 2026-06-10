@@ -20,6 +20,16 @@ export default defineConfig({
     outDir: "dist/client",
     emptyOutDir: true,
   },
+  preview: {
+    allowedHosts: ["agrozaar.onrender.com", ".onrender.com"],
+    port: 10000,
+    host: true,
+  },
+  server: {
+    allowedHosts: ["agrozaar.onrender.com", ".onrender.com"],
+    port: 10000,
+    host: true,
+  },
   resolve: {
     alias: {
       "@": srcRoot,

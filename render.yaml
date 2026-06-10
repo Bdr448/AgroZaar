@@ -1,0 +1,11 @@
+services:
+  - type: web
+    name: agrozaar
+    runtime: node
+    buildCommand: npm install && npm run build
+    startCommand: npx vite preview --config vite.spa.config.ts --port 10000 --host
+    envVars:
+      - key: VITE_SUPABASE_URL
+        sync: false
+      - key: VITE_SUPABASE_ANON_KEY
+        sync: false
