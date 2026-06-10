@@ -24,7 +24,15 @@ export const Route = createFileRoute("/app/delegated-authority")({
   component: DelegatedAuthorityPage,
 });
 
-const ASSIGNABLE_ROLES: RoleId[] = ["partner", "supervisor", "sales", "accountant", "warehouse", "qc-manager", "admin"];
+const ASSIGNABLE_ROLES: RoleId[] = [
+  "partner",
+  "supervisor",
+  "sales",
+  "accountant",
+  "warehouse",
+  "qc-manager",
+  "admin",
+];
 
 function DelegatedAuthorityPage() {
   const user = useSession();
@@ -47,7 +55,13 @@ function DelegatedAuthorityPage() {
   const activate = async () => {
     if (perms.length === 0) return;
     try {
-      await createDelegation({ userRole: role, permissions: perms, duration, customEnd, delegatedBy: user.name });
+      await createDelegation({
+        userRole: role,
+        permissions: perms,
+        duration,
+        customEnd,
+        delegatedBy: user.name,
+      });
       setPerms([]);
       toast.success("Delegated authority activated successfully.");
     } catch (err: any) {
@@ -57,7 +71,11 @@ function DelegatedAuthorityPage() {
 
   const delColumns: Column<Delegation & Record<string, unknown>>[] = [
     { key: "userName", header: "User", sortable: true },
-    { key: "permissions", header: "Permissions", render: (r) => <span className="text-xs">{r.permissions.join(", ")}</span> },
+    {
+      key: "permissions",
+      header: "Permissions",
+      render: (r) => <span className="text-xs">{r.permissions.join(", ")}</span>,
+    },
     { key: "duration", header: "Duration", render: (r) => DURATION_LABELS[r.duration] },
     {
       key: "expiresAt",
@@ -102,11 +120,24 @@ function DelegatedAuthorityPage() {
 
   return (
     <>
-      <PageHeader title="Delegated Authority" subtitle="Grant temporary permissions on top of a user's role. Delegation never replaces the original role." />
+      <PageHeader
+        title="Delegated Authority"
+        subtitle="Grant temporary permissions on top of a user's role. Delegation never replaces the original role."
+      />
 
       <div className="mb-6 grid gap-4 sm:grid-cols-3">
-        <StatCard label="Active delegations" value={String(activeCount)} icon={ShieldCheck} tone="primary" />
-        <StatCard label="Total grants" value={String(delegations.length)} icon={Clock} tone="brown" />
+        <StatCard
+          label="Active delegations"
+          value={String(activeCount)}
+          icon={ShieldCheck}
+          tone="primary"
+        />
+        <StatCard
+          label="Total grants"
+          value={String(delegations.length)}
+          icon={Clock}
+          tone="brown"
+        />
         <StatCard label="Audit entries" value={String(audit.length)} icon={History} tone="accent" />
       </div>
 
@@ -115,7 +146,9 @@ function DelegatedAuthorityPage() {
         <Panel title="Grant Authority">
           <div className="space-y-4 p-5">
             <div>
-              <label className="mb-1.5 block text-sm font-medium text-foreground">Select User</label>
+              <label className="mb-1.5 block text-sm font-medium text-foreground">
+                Select User
+              </label>
               <select
                 value={role}
                 onChange={(e) => setRole(e.target.value as RoleId)}
@@ -130,11 +163,21 @@ function DelegatedAuthorityPage() {
             </div>
 
             <div>
-              <label className="mb-1.5 block text-sm font-medium text-foreground">Additional Permissions</label>
+              <label className="mb-1.5 block text-sm font-medium text-foreground">
+                Additional Permissions
+              </label>
               <div className="grid grid-cols-1 gap-1.5 sm:grid-cols-2">
                 {DELEGATABLE_PERMISSIONS.map((p) => (
-                  <label key={p} className="flex cursor-pointer items-center gap-2 rounded-md border border-border px-2.5 py-1.5 text-xs hover:bg-secondary/50">
-                    <input type="checkbox" checked={perms.includes(p)} onChange={() => togglePerm(p)} className="accent-[var(--primary)]" />
+                  <label
+                    key={p}
+                    className="flex cursor-pointer items-center gap-2 rounded-md border border-border px-2.5 py-1.5 text-xs hover:bg-secondary/50"
+                  >
+                    <input
+                      type="checkbox"
+                      checked={perms.includes(p)}
+                      onChange={() => togglePerm(p)}
+                      className="accent-[var(--primary)]"
+                    />
                     {p}
                   </label>
                 ))}
@@ -158,7 +201,9 @@ function DelegatedAuthorityPage() {
 
             {duration === "custom" && (
               <div>
-                <label className="mb-1.5 block text-sm font-medium text-foreground">Expiry Date</label>
+                <label className="mb-1.5 block text-sm font-medium text-foreground">
+                  Expiry Date
+                </label>
                 <input
                   type="date"
                   value={customEnd}
@@ -181,10 +226,15 @@ function DelegatedAuthorityPage() {
         {/* Protected perms */}
         <Panel title="Ownership-Protected Permissions">
           <div className="p-5">
-            <p className="mb-3 text-sm text-muted-foreground">These permissions can never be delegated and remain Owner-only.</p>
+            <p className="mb-3 text-sm text-muted-foreground">
+              These permissions can never be delegated and remain Owner-only.
+            </p>
             <div className="grid grid-cols-1 gap-1.5 sm:grid-cols-2">
               {PROTECTED_PERMISSIONS.map((p) => (
-                <span key={p} className="flex items-center gap-2 rounded-md bg-destructive/8 px-2.5 py-1.5 text-xs text-destructive">
+                <span
+                  key={p}
+                  className="flex items-center gap-2 rounded-md bg-destructive/8 px-2.5 py-1.5 text-xs text-destructive"
+                >
                   <Ban className="h-3.5 w-3.5 shrink-0" /> {p}
                 </span>
               ))}
@@ -194,8 +244,14 @@ function DelegatedAuthorityPage() {
       </div>
 
       <div className="mt-6">
-        <h3 className="mb-3 font-heading text-base font-semibold text-foreground">Active & Past Delegations</h3>
-        <DataTable columns={delColumns} data={delegations as (Delegation & Record<string, unknown>)[]} emptyLabel="No delegations granted yet" />
+        <h3 className="mb-3 font-heading text-base font-semibold text-foreground">
+          Active & Past Delegations
+        </h3>
+        <DataTable
+          columns={delColumns}
+          data={delegations as (Delegation & Record<string, unknown>)[]}
+          emptyLabel="No delegations granted yet"
+        />
       </div>
     </>
   );

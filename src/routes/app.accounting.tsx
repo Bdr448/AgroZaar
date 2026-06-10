@@ -11,7 +11,13 @@ export const Route = createFileRoute("/app/accounting")({
   component: AccountingPage,
 });
 
-const VOUCHER_TYPES = ["Journal Voucher", "Payment Voucher", "Receipt Voucher", "Contra Voucher", "Adjustment Voucher"];
+const VOUCHER_TYPES = [
+  "Journal Voucher",
+  "Payment Voucher",
+  "Receipt Voucher",
+  "Contra Voucher",
+  "Adjustment Voucher",
+];
 
 interface VoucherRow extends Record<string, unknown> {
   vno: string;
@@ -25,8 +31,23 @@ interface VoucherRow extends Record<string, unknown> {
 
 const inr = (n: number) => `₹${n.toLocaleString("en-IN")}`;
 
-const REPORTS = ["Trial Balance", "Balance Sheet", "Profit & Loss", "Cash Flow", "Cash Book", "Bank Book", "Day Book", "Ledger Statement"];
-const MASTERS = ["Chart of Accounts", "Ledger Groups", "Ledgers", "Opening Balances", "Cost Centers"];
+const REPORTS = [
+  "Trial Balance",
+  "Balance Sheet",
+  "Profit & Loss",
+  "Cash Flow",
+  "Cash Book",
+  "Bank Book",
+  "Day Book",
+  "Ledger Statement",
+];
+const MASTERS = [
+  "Chart of Accounts",
+  "Ledger Groups",
+  "Ledgers",
+  "Opening Balances",
+  "Cost Centers",
+];
 
 function AccountingPage() {
   const user = useSession();
@@ -51,16 +72,40 @@ function AccountingPage() {
           debit: debitLine?.chart_of_accounts?.name || "Expenses",
           credit: creditLine?.chart_of_accounts?.name || "Cash",
           amount: parseFloat(debitLine?.debit_amount || creditLine?.credit_amount || 0),
-          status: "Active"
+          status: "Active",
         };
       });
       setData(mapped);
     } else {
       // Fallback to static mock entries only if DB is completely empty (before seeding)
       setData([
-        { vno: "JV-1042", date: "2026-06-02", type: "Journal Voucher", debit: "Purchases", credit: "Sundry Creditors", amount: 184000, status: "Active" },
-        { vno: "PV-0931", date: "2026-06-02", type: "Payment Voucher", debit: "Sundry Creditors", credit: "HDFC Bank", amount: 95000, status: "Active" },
-        { vno: "RV-0772", date: "2026-06-01", type: "Receipt Voucher", debit: "HDFC Bank", credit: "Sundry Debtors", amount: 142000, status: "Active" }
+        {
+          vno: "JV-1042",
+          date: "2026-06-02",
+          type: "Journal Voucher",
+          debit: "Purchases",
+          credit: "Sundry Creditors",
+          amount: 184000,
+          status: "Active",
+        },
+        {
+          vno: "PV-0931",
+          date: "2026-06-02",
+          type: "Payment Voucher",
+          debit: "Sundry Creditors",
+          credit: "HDFC Bank",
+          amount: 95000,
+          status: "Active",
+        },
+        {
+          vno: "RV-0772",
+          date: "2026-06-01",
+          type: "Receipt Voucher",
+          debit: "HDFC Bank",
+          credit: "Sundry Debtors",
+          amount: 142000,
+          status: "Active",
+        },
       ]);
     }
     setLoading(false);
@@ -78,7 +123,12 @@ function AccountingPage() {
     { key: "type", header: "Type" },
     { key: "debit", header: "Debit Ledger" },
     { key: "credit", header: "Credit Ledger" },
-    { key: "amount", header: "Amount", align: "right", render: (r) => <span className="font-semibold">{inr(r.amount)}</span> },
+    {
+      key: "amount",
+      header: "Amount",
+      align: "right",
+      render: (r) => <span className="font-semibold">{inr(r.amount)}</span>,
+    },
     {
       key: "status",
       header: "Status",
@@ -104,9 +154,19 @@ function AccountingPage() {
       />
 
       <div className="mb-6 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-        <StatCard label="Total debits" value={inr(data.reduce((acc, r) => acc + r.amount, 0))} icon={Scale} tone="primary" />
+        <StatCard
+          label="Total debits"
+          value={inr(data.reduce((acc, r) => acc + r.amount, 0))}
+          icon={Scale}
+          tone="primary"
+        />
         <StatCard label="Bank balance" value={inr(312500)} icon={Wallet} tone="brown" />
-        <StatCard label="Vouchers (MTD)" value={String(data.length)} icon={BookOpen} tone="accent" />
+        <StatCard
+          label="Vouchers (MTD)"
+          value={String(data.length)}
+          icon={BookOpen}
+          tone="accent"
+        />
         <StatCard label="Ledgers" value="74" icon={Building2} tone="primary" />
       </div>
 
@@ -116,10 +176,16 @@ function AccountingPage() {
             key={t}
             onClick={() => setTab(t)}
             className={`flex-1 rounded-md px-3 py-2 text-sm font-medium capitalize transition-colors ${
-              tab === t ? "bg-primary text-primary-foreground" : "text-muted-foreground hover:bg-secondary"
+              tab === t
+                ? "bg-primary text-primary-foreground"
+                : "text-muted-foreground hover:bg-secondary"
             }`}
           >
-            {t === "masters" ? "Accounting Masters" : t === "reports" ? "Financial Reports" : "Vouchers"}
+            {t === "masters"
+              ? "Accounting Masters"
+              : t === "reports"
+                ? "Financial Reports"
+                : "Vouchers"}
           </button>
         ))}
       </div>
@@ -128,20 +194,27 @@ function AccountingPage() {
         <>
           <div className="mb-4 flex flex-wrap gap-2">
             {VOUCHER_TYPES.map((v) => (
-              <span key={v} className="rounded-full border border-border bg-card px-3 py-1 text-xs font-medium text-muted-foreground">
+              <span
+                key={v}
+                className="rounded-full border border-border bg-card px-3 py-1 text-xs font-medium text-muted-foreground"
+              >
                 {v}
               </span>
             ))}
           </div>
           {loading ? (
             <div className="flex h-32 items-center justify-center rounded-xl border border-dashed border-border bg-card/60">
-              <p className="text-sm text-muted-foreground animate-pulse font-medium">Loading vouchers...</p>
+              <p className="text-sm text-muted-foreground animate-pulse font-medium">
+                Loading vouchers...
+              </p>
             </div>
           ) : (
             <DataTable columns={columns} data={data} />
           )}
           <div className="mt-4 rounded-xl border border-border bg-card p-4 text-sm text-muted-foreground">
-            <span className="font-medium text-foreground">Approval:</span> Large entries route Accountant → Finance Manager → Owner. Transactions are never deleted — only Active, Cancelled or Reversed.
+            <span className="font-medium text-foreground">Approval:</span> Large entries route
+            Accountant → Finance Manager → Owner. Transactions are never deleted — only Active,
+            Cancelled or Reversed.
           </div>
         </>
       )}

@@ -6,7 +6,7 @@ const client = new Client({
   database: "postgres",
   user: "postgres.wefogwllfidvnkxgswjd",
   password: "Bhavya@12345@",
-  ssl: { rejectUnauthorized: false }
+  ssl: { rejectUnauthorized: false },
 });
 
 async function main() {

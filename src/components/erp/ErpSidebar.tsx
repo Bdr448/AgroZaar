@@ -25,7 +25,9 @@ export function ErpSidebar({
 
   return (
     <>
-      {mobileOpen && <div className="fixed inset-0 z-40 bg-black/50 lg:hidden" onClick={onCloseMobile} />}
+      {mobileOpen && (
+        <div className="fixed inset-0 z-40 bg-black/50 lg:hidden" onClick={onCloseMobile} />
+      )}
       <aside
         className={cn(
           "fixed inset-y-0 left-0 z-50 flex flex-col bg-sidebar text-sidebar-foreground transition-all duration-300 lg:static",
@@ -41,10 +43,15 @@ export function ErpSidebar({
           {!collapsed && (
             <span className="flex flex-col leading-none">
               <span className="font-heading text-base font-extrabold text-white">Agrozaar</span>
-              <span className="text-[0.6rem] font-medium tracking-[0.2em] text-sidebar-muted">FOODS LLP</span>
+              <span className="text-[0.6rem] font-medium tracking-[0.2em] text-sidebar-muted">
+                FOODS LLP
+              </span>
             </span>
           )}
-          <button className="ml-auto text-sidebar-muted hover:text-white lg:hidden" onClick={onCloseMobile}>
+          <button
+            className="ml-auto text-sidebar-muted hover:text-white lg:hidden"
+            onClick={onCloseMobile}
+          >
             <X className="h-5 w-5" />
           </button>
         </div>
@@ -53,7 +60,9 @@ export function ErpSidebar({
         {!collapsed && (
           <div className="px-4 pt-4">
             <div className="rounded-lg bg-sidebar-accent px-3 py-2">
-              <p className="text-[0.65rem] uppercase tracking-wider text-sidebar-muted">Signed in as</p>
+              <p className="text-[0.65rem] uppercase tracking-wider text-sidebar-muted">
+                Signed in as
+              </p>
               <p className="text-sm font-semibold text-white">{ROLE_LABELS[role]}</p>
             </div>
           </div>
@@ -62,7 +71,13 @@ export function ErpSidebar({
         {/* Nav */}
         <nav className="flex-1 space-y-1 overflow-y-auto px-3 py-4">
           {nav.map((it) => (
-            <NavRow key={it.to} item={it} collapsed={collapsed} pathname={pathname} onNavigate={onCloseMobile} />
+            <NavRow
+              key={it.to}
+              item={it}
+              collapsed={collapsed}
+              pathname={pathname}
+              onNavigate={onCloseMobile}
+            />
           ))}
         </nav>
 
@@ -101,7 +116,9 @@ function NavRow({
           onClick={() => setOpen((o) => !o)}
           className={cn(
             "flex w-full items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition-colors",
-            active ? "bg-primary/15 text-white" : "text-sidebar-foreground/85 hover:bg-sidebar-accent hover:text-white",
+            active
+              ? "bg-primary/15 text-white"
+              : "text-sidebar-foreground/85 hover:bg-sidebar-accent hover:text-white",
           )}
         >
           <Icon className="h-[18px] w-[18px] shrink-0" />
@@ -140,7 +157,9 @@ function NavRow({
       className={cn(
         "flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition-colors",
         collapsed && "justify-center",
-        active ? "bg-primary text-primary-foreground shadow-soft" : "text-sidebar-foreground/85 hover:bg-sidebar-accent hover:text-white",
+        active
+          ? "bg-primary text-primary-foreground shadow-soft"
+          : "text-sidebar-foreground/85 hover:bg-sidebar-accent hover:text-white",
       )}
     >
       <Icon className="h-[18px] w-[18px] shrink-0" />

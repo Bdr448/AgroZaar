@@ -36,7 +36,8 @@ export function DataTable<T extends Record<string, unknown>>({
     }
     if (sortKey) {
       rows = [...rows].sort((a, b) => {
-        const av = a[sortKey], bv = b[sortKey];
+        const av = a[sortKey],
+          bv = b[sortKey];
         if (av == null) return 1;
         if (bv == null) return -1;
         if (typeof av === "number" && typeof bv === "number") return asc ? av - bv : bv - av;
@@ -52,7 +53,10 @@ export function DataTable<T extends Record<string, unknown>>({
 
   const toggleSort = (key: string) => {
     if (sortKey === key) setAsc((a) => !a);
-    else { setSortKey(key); setAsc(true); }
+    else {
+      setSortKey(key);
+      setAsc(true);
+    }
   };
 
   return (
@@ -63,7 +67,10 @@ export function DataTable<T extends Record<string, unknown>>({
             <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
             <input
               value={query}
-              onChange={(e) => { setQuery(e.target.value); setPage(1); }}
+              onChange={(e) => {
+                setQuery(e.target.value);
+                setPage(1);
+              }}
               placeholder="Search…"
               className="w-full rounded-lg border border-input bg-secondary/50 py-2 pl-10 pr-3 text-sm outline-none focus:border-primary focus:bg-card focus:ring-2 focus:ring-primary/20"
             />
@@ -79,12 +86,27 @@ export function DataTable<T extends Record<string, unknown>>({
           <thead>
             <tr className="border-b border-border bg-secondary/40">
               {columns.map((c) => (
-                <th key={c.key} className={cn("px-4 py-3 font-semibold text-muted-foreground", c.align === "right" ? "text-right" : c.align === "center" ? "text-center" : "text-left")}>
+                <th
+                  key={c.key}
+                  className={cn(
+                    "px-4 py-3 font-semibold text-muted-foreground",
+                    c.align === "right"
+                      ? "text-right"
+                      : c.align === "center"
+                        ? "text-center"
+                        : "text-left",
+                  )}
+                >
                   {c.sortable ? (
-                    <button onClick={() => toggleSort(c.key)} className="inline-flex items-center gap-1 hover:text-foreground">
+                    <button
+                      onClick={() => toggleSort(c.key)}
+                      className="inline-flex items-center gap-1 hover:text-foreground"
+                    >
                       {c.header} <ArrowUpDown className="h-3.5 w-3.5" />
                     </button>
-                  ) : c.header}
+                  ) : (
+                    c.header
+                  )}
                 </th>
               ))}
             </tr>
@@ -101,9 +123,22 @@ export function DataTable<T extends Record<string, unknown>>({
               </tr>
             ) : (
               rows.map((row, i) => (
-                <tr key={i} className="border-b border-border/60 transition-colors last:border-0 hover:bg-secondary/40">
+                <tr
+                  key={i}
+                  className="border-b border-border/60 transition-colors last:border-0 hover:bg-secondary/40"
+                >
                   {columns.map((c) => (
-                    <td key={c.key} className={cn("px-4 py-3 text-foreground", c.align === "right" ? "text-right" : c.align === "center" ? "text-center" : "text-left")}>
+                    <td
+                      key={c.key}
+                      className={cn(
+                        "px-4 py-3 text-foreground",
+                        c.align === "right"
+                          ? "text-right"
+                          : c.align === "center"
+                            ? "text-center"
+                            : "text-left",
+                      )}
+                    >
                       {c.render ? c.render(row) : String(row[c.key] ?? "")}
                     </td>
                   ))}
@@ -116,13 +151,26 @@ export function DataTable<T extends Record<string, unknown>>({
 
       {filtered.length > pageSize && (
         <div className="flex items-center justify-between border-t border-border px-4 py-3 text-sm text-muted-foreground">
-          <span>Showing {(current - 1) * pageSize + 1}–{Math.min(current * pageSize, filtered.length)} of {filtered.length}</span>
+          <span>
+            Showing {(current - 1) * pageSize + 1}–{Math.min(current * pageSize, filtered.length)}{" "}
+            of {filtered.length}
+          </span>
           <div className="flex items-center gap-1">
-            <button onClick={() => setPage((p) => Math.max(1, p - 1))} disabled={current === 1} className="flex h-8 w-8 items-center justify-center rounded-md border border-input disabled:opacity-40 hover:bg-secondary">
+            <button
+              onClick={() => setPage((p) => Math.max(1, p - 1))}
+              disabled={current === 1}
+              className="flex h-8 w-8 items-center justify-center rounded-md border border-input disabled:opacity-40 hover:bg-secondary"
+            >
               <ChevronLeft className="h-4 w-4" />
             </button>
-            <span className="px-2 font-medium text-foreground">{current} / {pages}</span>
-            <button onClick={() => setPage((p) => Math.min(pages, p + 1))} disabled={current === pages} className="flex h-8 w-8 items-center justify-center rounded-md border border-input disabled:opacity-40 hover:bg-secondary">
+            <span className="px-2 font-medium text-foreground">
+              {current} / {pages}
+            </span>
+            <button
+              onClick={() => setPage((p) => Math.min(pages, p + 1))}
+              disabled={current === pages}
+              className="flex h-8 w-8 items-center justify-center rounded-md border border-input disabled:opacity-40 hover:bg-secondary"
+            >
               <ChevronRight className="h-4 w-4" />
             </button>
           </div>

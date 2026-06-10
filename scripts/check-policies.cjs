@@ -38,19 +38,17 @@ const supabase = createClient(supabaseUrl, serviceRoleKey);
 
 async function checkPolicies() {
   console.log("Querying database policies...");
-  
+
   // We can run raw SQL query using RPC or read it from a system view if postgrest allows it?
   // Wait, does PostgREST allow reading from pg_catalog or pg_policies?
   // Let's try to select from the pg_policies table or pg_catalog.pg_policies.
   // Note: pg_policies is a system view. Let's see if we can query it directly.
   try {
-    const { data, error } = await supabase
-      .from("pg_policies")
-      .select("*");
-    
+    const { data, error } = await supabase.from("pg_policies").select("*");
+
     if (error) {
       console.log("Could not query pg_policies directly via PostgREST:", error.message);
-      
+
       // Let's try checking if RPC functions exist or if we can query RLS state using standard tables.
       // Wait, we can query table RLS status from information_schema if allowed.
     } else {

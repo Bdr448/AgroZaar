@@ -3,7 +3,15 @@ import type { LucideIcon } from "lucide-react";
 import { ArrowUpRight, ArrowDownRight } from "lucide-react";
 
 /* ---------- Page header ---------- */
-export function PageHeader({ title, subtitle, action }: { title: string; subtitle?: string; action?: React.ReactNode }) {
+export function PageHeader({
+  title,
+  subtitle,
+  action,
+}: {
+  title: string;
+  subtitle?: string;
+  action?: React.ReactNode;
+}) {
   return (
     <div className="mb-6 flex flex-wrap items-end justify-between gap-3">
       <div>
@@ -39,12 +47,23 @@ export function StatCard({
   return (
     <div className="rounded-xl border border-border bg-card p-5 shadow-soft transition-shadow hover:shadow-card">
       <div className="flex items-start justify-between">
-        <span className={cn("flex h-10 w-10 items-center justify-center rounded-lg", toneMap[tone])}>
+        <span
+          className={cn("flex h-10 w-10 items-center justify-center rounded-lg", toneMap[tone])}
+        >
           <Icon className="h-5 w-5" />
         </span>
         {delta && (
-          <span className={cn("inline-flex items-center gap-0.5 text-xs font-semibold", delta.up ? "text-accent" : "text-destructive")}>
-            {delta.up ? <ArrowUpRight className="h-3.5 w-3.5" /> : <ArrowDownRight className="h-3.5 w-3.5" />}
+          <span
+            className={cn(
+              "inline-flex items-center gap-0.5 text-xs font-semibold",
+              delta.up ? "text-accent" : "text-destructive",
+            )}
+          >
+            {delta.up ? (
+              <ArrowUpRight className="h-3.5 w-3.5" />
+            ) : (
+              <ArrowDownRight className="h-3.5 w-3.5" />
+            )}
             {delta.value}
           </span>
         )}
@@ -65,11 +84,30 @@ export function StatusBadge({ label, tone = "neutral" }: { label: string; tone?:
     info: "bg-spice-brown/12 text-spice-brown",
     neutral: "bg-muted text-muted-foreground",
   };
-  return <span className={cn("inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-semibold", map[tone])}>{label}</span>;
+  return (
+    <span
+      className={cn(
+        "inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-semibold",
+        map[tone],
+      )}
+    >
+      {label}
+    </span>
+  );
 }
 
 /* ---------- Card container ---------- */
-export function Panel({ title, action, children, className }: { title?: string; action?: React.ReactNode; children: React.ReactNode; className?: string }) {
+export function Panel({
+  title,
+  action,
+  children,
+  className,
+}: {
+  title?: string;
+  action?: React.ReactNode;
+  children: React.ReactNode;
+  className?: string;
+}) {
   return (
     <div className={cn("rounded-xl border border-border bg-card shadow-soft", className)}>
       {title && (

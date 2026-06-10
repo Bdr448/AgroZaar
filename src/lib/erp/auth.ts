@@ -58,11 +58,7 @@ export function subscribe(listener: () => void) {
 async function fetchUserProfile(userId: string, email: string): Promise<ErpUser> {
   try {
     const { data: profile } = await withTimeout(
-      supabase
-        .from("user_profiles")
-        .select("name, role")
-        .eq("id", userId)
-        .maybeSingle(),
+      supabase.from("user_profiles").select("name, role").eq("id", userId).maybeSingle(),
       "Profile request timed out.",
     );
 
@@ -74,7 +70,13 @@ async function fetchUserProfile(userId: string, email: string): Promise<ErpUser>
       loginAt: Date.now(),
     };
   } catch {
-    return { id: userId, name: "ERP User", email, role: "warehouse" as RoleId, loginAt: Date.now() };
+    return {
+      id: userId,
+      name: "ERP User",
+      email,
+      role: "warehouse" as RoleId,
+      loginAt: Date.now(),
+    };
   }
 }
 

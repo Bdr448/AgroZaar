@@ -79,17 +79,37 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
       { charSet: "utf-8" },
       { name: "viewport", content: "width=device-width, initial-scale=1" },
       { title: "Lovable App" },
-      { name: "description", content: "Agrozaar Foods UI is a premium enterprise website showcasing a spice manufacturer and exporter." },
+      {
+        name: "description",
+        content:
+          "Agrozaar Foods UI is a premium enterprise website showcasing a spice manufacturer and exporter.",
+      },
       { name: "author", content: "Lovable" },
       { property: "og:title", content: "Lovable App" },
-      { property: "og:description", content: "Agrozaar Foods UI is a premium enterprise website showcasing a spice manufacturer and exporter." },
+      {
+        property: "og:description",
+        content:
+          "Agrozaar Foods UI is a premium enterprise website showcasing a spice manufacturer and exporter.",
+      },
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary" },
       { name: "twitter:site", content: "@Lovable" },
       { name: "twitter:title", content: "Lovable App" },
-      { name: "twitter:description", content: "Agrozaar Foods UI is a premium enterprise website showcasing a spice manufacturer and exporter." },
-      { property: "og:image", content: "https://pub-bb2e103a32db4e198524a2e9ed8f35b4.r2.dev/0f456ff9-653d-44fb-96e8-a635880ae2b4/id-preview-1142d520--a1b7e512-7e21-4983-bb3a-94bcf90ad39c.lovable.app-1780459769309.png" },
-      { name: "twitter:image", content: "https://pub-bb2e103a32db4e198524a2e9ed8f35b4.r2.dev/0f456ff9-653d-44fb-96e8-a635880ae2b4/id-preview-1142d520--a1b7e512-7e21-4983-bb3a-94bcf90ad39c.lovable.app-1780459769309.png" },
+      {
+        name: "twitter:description",
+        content:
+          "Agrozaar Foods UI is a premium enterprise website showcasing a spice manufacturer and exporter.",
+      },
+      {
+        property: "og:image",
+        content:
+          "https://pub-bb2e103a32db4e198524a2e9ed8f35b4.r2.dev/0f456ff9-653d-44fb-96e8-a635880ae2b4/id-preview-1142d520--a1b7e512-7e21-4983-bb3a-94bcf90ad39c.lovable.app-1780459769309.png",
+      },
+      {
+        name: "twitter:image",
+        content:
+          "https://pub-bb2e103a32db4e198524a2e9ed8f35b4.r2.dev/0f456ff9-653d-44fb-96e8-a635880ae2b4/id-preview-1142d520--a1b7e512-7e21-4983-bb3a-94bcf90ad39c.lovable.app-1780459769309.png",
+      },
     ],
     links: [
       {

@@ -1,8 +1,19 @@
 import { useNavigate } from "@tanstack/react-router";
 import { useState, useRef, useEffect } from "react";
 import {
-  Menu, Search, Bell, ChevronDown, User, Settings, LogOut,
-  Plus, Circle, AlertTriangle, TrendingUp, ShieldCheck, Wallet,
+  Menu,
+  Search,
+  Bell,
+  ChevronDown,
+  User,
+  Settings,
+  LogOut,
+  Plus,
+  Circle,
+  AlertTriangle,
+  TrendingUp,
+  ShieldCheck,
+  Wallet,
   X,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
@@ -55,25 +66,33 @@ const NOTIFICATIONS = [
 
 /* ─── Search routes index ───────────────────────────────── */
 const SEARCH_ROUTES: { label: string; to: string; keywords: string[] }[] = [
-  { label: "Dashboard",         to: "/app/dashboard",         keywords: ["home", "overview"] },
-  { label: "CRM",               to: "/app/crm",               keywords: ["leads", "pipeline"] },
-  { label: "Customers",         to: "/app/customers",         keywords: ["customer", "client", "buyer"] },
-  { label: "Suppliers",         to: "/app/suppliers",         keywords: ["supplier", "vendor", "farm"] },
-  { label: "Products",          to: "/app/products",          keywords: ["product", "sku", "catalog", "spice"] },
-  { label: "Inventory",         to: "/app/inventory",         keywords: ["stock", "warehouse", "inward"] },
-  { label: "Purchases",         to: "/app/purchases",         keywords: ["purchase", "buy"] },
-  { label: "Production",        to: "/app/production",        keywords: ["production", "batch", "grind"] },
-  { label: "QC Management",     to: "/app/qc-management",     keywords: ["quality", "qc", "inspection"] },
-  { label: "Sales",             to: "/app/sales",             keywords: ["sales", "order", "revenue"] },
-  { label: "Billing",           to: "/app/billing",           keywords: ["billing", "invoice", "bill"] },
-  { label: "Accounts",          to: "/app/accounts",          keywords: ["account", "bank", "ledger"] },
-  { label: "Accounting",        to: "/app/accounting",        keywords: ["accounting", "voucher", "journal"] },
-  { label: "Payroll",           to: "/app/payroll",           keywords: ["payroll", "salary", "pay", "slip"] },
-  { label: "Reports",           to: "/app/reports",           keywords: ["report", "analytics"] },
-  { label: "Export Management", to: "/app/export-management", keywords: ["export", "dispatch", "challan", "shipment"] },
-  { label: "Notifications",     to: "/app/notifications",     keywords: ["notification", "alert"] },
-  { label: "User Management",   to: "/app/user-management",   keywords: ["user", "role", "access", "employee"] },
-  { label: "Settings",          to: "/app/settings",          keywords: ["settings", "config"] },
+  { label: "Dashboard", to: "/app/dashboard", keywords: ["home", "overview"] },
+  { label: "CRM", to: "/app/crm", keywords: ["leads", "pipeline"] },
+  { label: "Customers", to: "/app/customers", keywords: ["customer", "client", "buyer"] },
+  { label: "Suppliers", to: "/app/suppliers", keywords: ["supplier", "vendor", "farm"] },
+  { label: "Products", to: "/app/products", keywords: ["product", "sku", "catalog", "spice"] },
+  { label: "Inventory", to: "/app/inventory", keywords: ["stock", "warehouse", "inward"] },
+  { label: "Purchases", to: "/app/purchases", keywords: ["purchase", "buy"] },
+  { label: "Production", to: "/app/production", keywords: ["production", "batch", "grind"] },
+  { label: "QC Management", to: "/app/qc-management", keywords: ["quality", "qc", "inspection"] },
+  { label: "Sales", to: "/app/sales", keywords: ["sales", "order", "revenue"] },
+  { label: "Billing", to: "/app/billing", keywords: ["billing", "invoice", "bill"] },
+  { label: "Accounts", to: "/app/accounts", keywords: ["account", "bank", "ledger"] },
+  { label: "Accounting", to: "/app/accounting", keywords: ["accounting", "voucher", "journal"] },
+  { label: "Payroll", to: "/app/payroll", keywords: ["payroll", "salary", "pay", "slip"] },
+  { label: "Reports", to: "/app/reports", keywords: ["report", "analytics"] },
+  {
+    label: "Export Management",
+    to: "/app/export-management",
+    keywords: ["export", "dispatch", "challan", "shipment"],
+  },
+  { label: "Notifications", to: "/app/notifications", keywords: ["notification", "alert"] },
+  {
+    label: "User Management",
+    to: "/app/user-management",
+    keywords: ["user", "role", "access", "employee"],
+  },
+  { label: "Settings", to: "/app/settings", keywords: ["settings", "config"] },
 ];
 
 /* ─── Click-outside helper ──────────────────────────────── */
@@ -107,12 +126,14 @@ export function ErpHeader({ user, onOpenMobile }: { user: ErpUser; onOpenMobile:
     return () => document.removeEventListener("mousedown", h);
   }, []);
 
-  const results = query.trim().length > 0
-    ? SEARCH_ROUTES.filter((r) =>
-        r.label.toLowerCase().includes(query.toLowerCase()) ||
-        r.keywords.some((k) => k.includes(query.toLowerCase()))
-      ).slice(0, 7)
-    : [];
+  const results =
+    query.trim().length > 0
+      ? SEARCH_ROUTES.filter(
+          (r) =>
+            r.label.toLowerCase().includes(query.toLowerCase()) ||
+            r.keywords.some((k) => k.includes(query.toLowerCase())),
+        ).slice(0, 7)
+      : [];
 
   const handleSearchSelect = (to: string) => {
     navigate({ to: to as any });
@@ -123,11 +144,7 @@ export function ErpHeader({ user, onOpenMobile }: { user: ErpUser; onOpenMobile:
   return (
     <header className="sticky top-0 z-30 flex h-16 items-center gap-3 border-b border-border bg-card/90 px-4 backdrop-blur-md lg:px-6">
       {/* Mobile menu trigger */}
-      <button
-        className="text-foreground lg:hidden"
-        onClick={onOpenMobile}
-        aria-label="Open menu"
-      >
+      <button className="text-foreground lg:hidden" onClick={onOpenMobile} aria-label="Open menu">
         <Menu className="h-5 w-5" />
       </button>
 
@@ -137,14 +154,20 @@ export function ErpHeader({ user, onOpenMobile }: { user: ErpUser; onOpenMobile:
         <input
           placeholder="Search modules, products, orders…"
           value={query}
-          onChange={(e) => { setQuery(e.target.value); setSearchOpen(true); }}
+          onChange={(e) => {
+            setQuery(e.target.value);
+            setSearchOpen(true);
+          }}
           onFocus={() => setSearchOpen(true)}
           className="w-full rounded-lg border border-input bg-secondary/60 py-2 pl-10 pr-8 text-sm outline-none transition-colors focus:border-primary focus:bg-card focus:ring-2 focus:ring-primary/20"
         />
         {/* Clear button */}
         {query.length > 0 && (
           <button
-            onClick={() => { setQuery(""); setSearchOpen(false); }}
+            onClick={() => {
+              setQuery("");
+              setSearchOpen(false);
+            }}
             className="absolute right-2.5 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
           >
             <X className="h-3.5 w-3.5" />
@@ -206,7 +229,7 @@ function NotificationBell() {
     setReadIds((prev) => new Set([...prev, id]));
   };
 
-  const handleNotifClick = (n: typeof NOTIFICATIONS[0]) => {
+  const handleNotifClick = (n: (typeof NOTIFICATIONS)[0]) => {
     markRead(n.id);
     setOpen(false);
     navigate({ to: n.to as any });
@@ -268,17 +291,29 @@ function NotificationBell() {
                   onClick={() => handleNotifClick(n)}
                   className={cn(
                     "flex w-full gap-3 border-b border-border/50 px-4 py-3.5 text-left transition-colors hover:bg-secondary/60",
-                    !isRead && "bg-primary/[0.03]"
+                    !isRead && "bg-primary/[0.03]",
                   )}
                 >
                   {/* Icon */}
-                  <span className={cn("mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-lg", n.iconClass)}>
+                  <span
+                    className={cn(
+                      "mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-lg",
+                      n.iconClass,
+                    )}
+                  >
                     <Icon className="h-4 w-4" />
                   </span>
                   {/* Text */}
                   <div className="min-w-0 flex-1">
                     <div className="flex items-start justify-between gap-2">
-                      <p className={cn("text-sm", !isRead ? "font-semibold text-foreground" : "font-medium text-foreground/80")}>
+                      <p
+                        className={cn(
+                          "text-sm",
+                          !isRead
+                            ? "font-semibold text-foreground"
+                            : "font-medium text-foreground/80",
+                        )}
+                      >
                         {n.title}
                       </p>
                       {!isRead && (
@@ -336,7 +371,12 @@ function ProfileMenu({ user }: { user: ErpUser }) {
           <span className="block text-sm font-semibold text-foreground">{user.name}</span>
           <span className="block text-xs text-muted-foreground">{ROLE_LABELS[user.role]}</span>
         </span>
-        <ChevronDown className={cn("hidden h-4 w-4 text-muted-foreground transition-transform sm:block", open && "rotate-180")} />
+        <ChevronDown
+          className={cn(
+            "hidden h-4 w-4 text-muted-foreground transition-transform sm:block",
+            open && "rotate-180",
+          )}
+        />
       </button>
 
       {open && (
@@ -352,14 +392,17 @@ function ProfileMenu({ user }: { user: ErpUser }) {
 
           {/* Menu items */}
           <div className="py-1">
-            <MenuLink icon={User}     label="My Profile"  onClick={() => go("/app/user-management")} />
-            <MenuLink icon={Settings} label="Settings"    onClick={() => go("/app/settings")} />
-            <MenuLink icon={Bell}     label="Notifications" onClick={() => go("/app/notifications")} />
+            <MenuLink icon={User} label="My Profile" onClick={() => go("/app/user-management")} />
+            <MenuLink icon={Settings} label="Settings" onClick={() => go("/app/settings")} />
+            <MenuLink icon={Bell} label="Notifications" onClick={() => go("/app/notifications")} />
           </div>
 
           {/* Sign out */}
           <button
-            onClick={() => { logout(); navigate({ to: "/login" }); }}
+            onClick={() => {
+              logout();
+              navigate({ to: "/login" });
+            }}
             className="flex w-full items-center gap-2.5 border-t border-border px-4 py-2.5 text-sm font-medium text-destructive transition-colors hover:bg-destructive/5"
           >
             <LogOut className="h-4 w-4" /> Sign out

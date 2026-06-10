@@ -53,7 +53,12 @@ export const ROLE_LABELS: Record<RoleId, string> = {
   retailer: "Retailer",
 };
 
-const slug = (s: string) => s.toLowerCase().replace(/&/g, "and").replace(/[^a-z0-9]+/g, "-").replace(/(^-|-$)/g, "");
+const slug = (s: string) =>
+  s
+    .toLowerCase()
+    .replace(/&/g, "and")
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/(^-|-$)/g, "");
 const item = (label: string, icon: LucideIcon, children?: string[]): NavItem => ({
   label,
   icon,
@@ -90,7 +95,6 @@ const superAdminNav: NavItem[] = [
 // Admin shares the full nav except the Owner-only private vault.
 const adminNav: NavItem[] = superAdminNav.filter((n) => n.to !== "/app/owner-vault");
 
-
 const salesNav: NavItem[] = [
   dashboard,
   item("Leads", Target),
@@ -110,7 +114,6 @@ const supervisorNav: NavItem[] = [
   item("Dispatch", Send),
   item("Payroll", KeyRound),
 ];
-
 
 const partnerNav: NavItem[] = [
   dashboard,
@@ -132,7 +135,6 @@ const accountantNav: NavItem[] = [
   item("Expenses", FileText),
   item("Profit & Loss", PieChart),
 ];
-
 
 const qcNav: NavItem[] = [
   dashboard,

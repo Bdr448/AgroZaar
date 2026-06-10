@@ -28,11 +28,7 @@ function ErpLayout() {
     }
 
     // Central role-based authorization guard
-    const allowedPaths = new Set<string>([
-      "/app",
-      "/app/",
-      "/app/dashboard",
-    ]);
+    const allowedPaths = new Set<string>(["/app", "/app/", "/app/dashboard"]);
 
     const nav = ROLE_NAV[user.role] || [];
     nav.forEach((item) => {

@@ -38,9 +38,7 @@ const supabase = createClient(supabaseUrl, serviceRoleKey);
 
 async function testJoin() {
   console.log("Testing join query...");
-  const { data, error } = await supabase
-    .from("salary_slips")
-    .select(`
+  const { data, error } = await supabase.from("salary_slips").select(`
       id,
       basic,
       hra,

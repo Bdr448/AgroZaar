@@ -15,7 +15,10 @@ function SessionExpired() {
       title="Your session has expired"
       description="For your security, you've been signed out due to inactivity. Please sign in again to continue."
     >
-      <Link to="/login" className="flex w-full items-center justify-center gap-2 rounded-lg bg-primary py-2.5 text-sm font-semibold text-primary-foreground shadow-soft hover:bg-primary/90">
+      <Link
+        to="/login"
+        className="flex w-full items-center justify-center gap-2 rounded-lg bg-primary py-2.5 text-sm font-semibold text-primary-foreground shadow-soft hover:bg-primary/90"
+      >
         <LogIn className="h-4 w-4" /> Sign in again
       </Link>
     </AuthShell>

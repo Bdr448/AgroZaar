@@ -80,27 +80,32 @@ async function seed() {
     });
 
     if (error) {
-      if (error.message.includes("already exists") || error.message.includes("already registered")) {
+      if (
+        error.message.includes("already exists") ||
+        error.message.includes("already registered")
+      ) {
         console.log(`  User ${u.email} already exists. Skipping.`);
       } else {
         console.error(`  Error creating ${u.email}:`, error.message);
       }
     } else {
       console.log(`  User created successfully! ID: ${data.user.id}`);
-      
+
       // Explicitly update profile role in case trigger defaulted it
       const { error: updateError } = await supabase
         .from("user_profiles")
         .update({ role: u.role, name: u.name })
         .eq("id", data.user.id);
-        
+
       if (updateError) {
         console.error(`  Profile sync update error:`, updateError.message);
       }
     }
   }
 
-  console.log("\nSeeding complete! You can log in using these credentials with password 'password123'");
+  console.log(
+    "\nSeeding complete! You can log in using these credentials with password 'password123'",
+  );
 }
 
 seed().catch(console.error);

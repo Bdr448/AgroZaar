@@ -1,27 +1,56 @@
 import { Globe2, FileCheck2, PackageCheck, BadgeCheck } from "lucide-react";
 
 const features = [
-  { icon: FileCheck2, title: "FOB / CIF / CFR Support", desc: "Flexible shipping terms tailored to your import requirements." },
-  { icon: PackageCheck, title: "International Packaging", desc: "Moisture-proof, export-grade packaging in custom sizes." },
-  { icon: BadgeCheck, title: "Quality Assurance", desc: "Batch documentation and lab reports for every consignment." },
+  {
+    icon: FileCheck2,
+    title: "FOB / CIF / CFR Support",
+    desc: "Flexible shipping terms tailored to your import requirements.",
+  },
+  {
+    icon: PackageCheck,
+    title: "International Packaging",
+    desc: "Moisture-proof, export-grade packaging in custom sizes.",
+  },
+  {
+    icon: BadgeCheck,
+    title: "Quality Assurance",
+    desc: "Batch documentation and lab reports for every consignment.",
+  },
 ];
 
-const countries = ["UAE", "USA", "UK", "Canada", "Australia", "Saudi Arabia", "Singapore", "Malaysia"];
+const countries = [
+  "UAE",
+  "USA",
+  "UK",
+  "Canada",
+  "Australia",
+  "Saudi Arabia",
+  "Singapore",
+  "Malaysia",
+];
 
 export function Export() {
   return (
     <section id="export" className="section-pad">
       <div className="container-x grid items-center gap-14 lg:grid-cols-2">
         <div>
-          <span className="text-sm font-semibold uppercase tracking-[0.18em] text-primary">Global Export</span>
-          <h2 className="mt-4 font-heading text-4xl font-extrabold text-spice-brown text-balance">Trusted spice exports, worldwide</h2>
+          <span className="text-sm font-semibold uppercase tracking-[0.18em] text-primary">
+            Global Export
+          </span>
+          <h2 className="mt-4 font-heading text-4xl font-extrabold text-spice-brown text-balance">
+            Trusted spice exports, worldwide
+          </h2>
           <p className="mt-5 text-lg leading-relaxed text-muted-foreground">
-            We support international buyers with compliant documentation, dependable logistics and consistent product quality across every shipment.
+            We support international buyers with compliant documentation, dependable logistics and
+            consistent product quality across every shipment.
           </p>
 
           <div className="mt-8 space-y-4">
             {features.map((f) => (
-              <div key={f.title} className="flex items-start gap-4 rounded-2xl border border-border bg-card p-5 shadow-soft">
+              <div
+                key={f.title}
+                className="flex items-start gap-4 rounded-2xl border border-border bg-card p-5 shadow-soft"
+              >
                 <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-primary/10 text-primary">
                   <f.icon className="h-5 w-5" />
                 </span>
@@ -37,11 +66,18 @@ export function Export() {
         <div className="relative overflow-hidden rounded-3xl border border-border bg-spice-brown p-10 text-primary-foreground shadow-card">
           <Globe2 className="absolute -right-10 -top-10 h-56 w-56 text-primary-foreground/5" />
           <div className="relative">
-            <p className="font-heading text-sm font-semibold uppercase tracking-[0.18em] text-primary">Export Markets</p>
-            <h3 className="mt-3 font-heading text-3xl font-extrabold">Serving buyers across continents</h3>
+            <p className="font-heading text-sm font-semibold uppercase tracking-[0.18em] text-primary">
+              Export Markets
+            </p>
+            <h3 className="mt-3 font-heading text-3xl font-extrabold">
+              Serving buyers across continents
+            </h3>
             <div className="mt-7 flex flex-wrap gap-2.5">
               {countries.map((c) => (
-                <span key={c} className="rounded-full border border-primary-foreground/20 bg-primary-foreground/5 px-4 py-1.5 text-sm font-medium">
+                <span
+                  key={c}
+                  className="rounded-full border border-primary-foreground/20 bg-primary-foreground/5 px-4 py-1.5 text-sm font-medium"
+                >
                   {c}
                 </span>
               ))}
@@ -56,7 +92,10 @@ export function Export() {
                 <p className="mt-1 text-xs text-primary-foreground/70">Quality Checked</p>
               </div>
             </div>
-            <a href="#contact" className="mt-8 inline-flex rounded-lg bg-primary px-6 py-3 text-sm font-semibold text-primary-foreground transition-transform hover:-translate-y-0.5">
+            <a
+              href="#contact"
+              className="mt-8 inline-flex rounded-lg bg-primary px-6 py-3 text-sm font-semibold text-primary-foreground transition-transform hover:-translate-y-0.5"
+            >
               Start an Export Inquiry
             </a>
           </div>

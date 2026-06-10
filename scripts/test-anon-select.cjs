@@ -40,7 +40,7 @@ async function testSelect() {
   console.log("Signing in as supervisor@agrozaar.com...");
   const { data: authData, error: authError } = await supabase.auth.signInWithPassword({
     email: "supervisor@agrozaar.com",
-    password: "password123"
+    password: "password123",
   });
 
   if (authError) {
@@ -51,9 +51,7 @@ async function testSelect() {
   console.log("Logged in successfully. User ID:", authData.user.id);
 
   console.log("Querying salary slips with anon client...");
-  const { data, error } = await supabase
-    .from("salary_slips")
-    .select(`
+  const { data, error } = await supabase.from("salary_slips").select(`
       id,
       basic,
       net_pay,

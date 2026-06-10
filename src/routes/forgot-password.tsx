@@ -28,10 +28,16 @@ function ForgotPassword() {
         title="Check your inbox"
         description={`We've sent password reset instructions to ${email}.`}
       >
-        <Link to="/reset-password" className="block w-full rounded-lg bg-primary py-2.5 text-center text-sm font-semibold text-primary-foreground shadow-soft hover:bg-primary/90">
+        <Link
+          to="/reset-password"
+          className="block w-full rounded-lg bg-primary py-2.5 text-center text-sm font-semibold text-primary-foreground shadow-soft hover:bg-primary/90"
+        >
           Continue to reset
         </Link>
-        <Link to="/login" className="mt-3 flex items-center justify-center gap-1.5 text-sm font-medium text-muted-foreground hover:text-foreground">
+        <Link
+          to="/login"
+          className="mt-3 flex items-center justify-center gap-1.5 text-sm font-medium text-muted-foreground hover:text-foreground"
+        >
           <ArrowLeft className="h-4 w-4" /> Back to login
         </Link>
       </AuthShell>
@@ -55,10 +61,16 @@ function ForgotPassword() {
             className="w-full rounded-lg border border-input bg-card py-2.5 pl-10 pr-3 text-sm shadow-soft outline-none focus:border-primary focus:ring-2 focus:ring-primary/20"
           />
         </div>
-        <button type="submit" className="w-full rounded-lg bg-primary py-2.5 text-sm font-semibold text-primary-foreground shadow-soft hover:bg-primary/90">
+        <button
+          type="submit"
+          className="w-full rounded-lg bg-primary py-2.5 text-sm font-semibold text-primary-foreground shadow-soft hover:bg-primary/90"
+        >
           Send reset link
         </button>
-        <Link to="/login" className="flex items-center justify-center gap-1.5 text-sm font-medium text-muted-foreground hover:text-foreground">
+        <Link
+          to="/login"
+          className="flex items-center justify-center gap-1.5 text-sm font-medium text-muted-foreground hover:text-foreground"
+        >
           <ArrowLeft className="h-4 w-4" /> Back to login
         </Link>
       </form>

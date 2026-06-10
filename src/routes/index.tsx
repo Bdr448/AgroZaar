@@ -15,9 +15,17 @@ export const Route = createFileRoute("/")({
   head: () => ({
     meta: [
       { title: "Agrozaar Foods LLP — Premium Spice Manufacturing & Export | Aviraaj" },
-      { name: "description", content: "Agrozaar Foods LLP manufactures and exports premium turmeric, chilli, coriander, cumin & garam masala under the Aviraaj brand for B2B, distributors, retailers and export markets." },
+      {
+        name: "description",
+        content:
+          "Agrozaar Foods LLP manufactures and exports premium turmeric, chilli, coriander, cumin & garam masala under the Aviraaj brand for B2B, distributors, retailers and export markets.",
+      },
       { property: "og:title", content: "Agrozaar Foods LLP — Pure Spices. Pure Trust." },
-      { property: "og:description", content: "Premium quality spices for B2B, retail, distributors and export markets, crafted with modern processing and uncompromised purity." },
+      {
+        property: "og:description",
+        content:
+          "Premium quality spices for B2B, retail, distributors and export markets, crafted with modern processing and uncompromised purity.",
+      },
       { property: "og:type", content: "website" },
     ],
     scripts: [
@@ -27,7 +35,8 @@ export const Route = createFileRoute("/")({
           "@context": "https://schema.org",
           "@type": "Organization",
           name: "Agrozaar Foods LLP",
-          description: "Spice manufacturing and export company specializing in turmeric, chilli, coriander, cumin and garam masala under the Aviraaj brand.",
+          description:
+            "Spice manufacturing and export company specializing in turmeric, chilli, coriander, cumin and garam masala under the Aviraaj brand.",
           foundingDate: "2026",
           address: { "@type": "PostalAddress", addressRegion: "Gujarat", addressCountry: "IN" },
         }),

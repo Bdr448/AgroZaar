@@ -22,28 +22,44 @@ export function Navbar() {
           </span>
           <span className="flex flex-col leading-none">
             <span className="font-heading text-lg font-extrabold text-spice-brown">Agrozaar</span>
-            <span className="text-[0.65rem] font-medium tracking-[0.22em] text-muted-foreground">FOODS LLP</span>
+            <span className="text-[0.65rem] font-medium tracking-[0.22em] text-muted-foreground">
+              FOODS LLP
+            </span>
           </span>
         </a>
 
         <div className="hidden items-center gap-8 md:flex">
           {links.map((l) => (
-            <a key={l.href} href={l.href} className="text-sm font-medium text-foreground/80 transition-colors hover:text-primary">
+            <a
+              key={l.href}
+              href={l.href}
+              className="text-sm font-medium text-foreground/80 transition-colors hover:text-primary"
+            >
               {l.label}
             </a>
           ))}
         </div>
 
         <div className="hidden items-center gap-4 md:flex">
-          <Link to="/login" className="text-sm font-semibold text-spice-brown transition-colors hover:text-primary">
+          <Link
+            to="/login"
+            className="text-sm font-semibold text-spice-brown transition-colors hover:text-primary"
+          >
             ERP Login
           </Link>
-          <a href="#contact" className="rounded-lg bg-primary px-5 py-2.5 text-sm font-semibold text-primary-foreground shadow-soft transition-transform hover:-translate-y-0.5">
+          <a
+            href="#contact"
+            className="rounded-lg bg-primary px-5 py-2.5 text-sm font-semibold text-primary-foreground shadow-soft transition-transform hover:-translate-y-0.5"
+          >
             Export Inquiry
           </a>
         </div>
 
-        <button className="md:hidden text-spice-brown" onClick={() => setOpen((o) => !o)} aria-label="Toggle menu">
+        <button
+          className="md:hidden text-spice-brown"
+          onClick={() => setOpen((o) => !o)}
+          aria-label="Toggle menu"
+        >
           {open ? <X /> : <Menu />}
         </button>
       </nav>
@@ -52,14 +68,27 @@ export function Navbar() {
         <div className="border-t border-border bg-background md:hidden">
           <div className="container-x flex flex-col gap-1 py-4">
             {links.map((l) => (
-              <a key={l.href} href={l.href} onClick={() => setOpen(false)} className="rounded-md px-2 py-2.5 text-sm font-medium text-foreground/80 hover:bg-secondary">
+              <a
+                key={l.href}
+                href={l.href}
+                onClick={() => setOpen(false)}
+                className="rounded-md px-2 py-2.5 text-sm font-medium text-foreground/80 hover:bg-secondary"
+              >
                 {l.label}
               </a>
             ))}
-            <Link to="/login" onClick={() => setOpen(false)} className="rounded-md px-2 py-2.5 text-sm font-semibold text-spice-brown hover:bg-secondary">
+            <Link
+              to="/login"
+              onClick={() => setOpen(false)}
+              className="rounded-md px-2 py-2.5 text-sm font-semibold text-spice-brown hover:bg-secondary"
+            >
               ERP Login
             </Link>
-            <a href="#contact" onClick={() => setOpen(false)} className="mt-2 rounded-lg bg-primary px-5 py-2.5 text-center text-sm font-semibold text-primary-foreground">
+            <a
+              href="#contact"
+              onClick={() => setOpen(false)}
+              className="mt-2 rounded-lg bg-primary px-5 py-2.5 text-center text-sm font-semibold text-primary-foreground"
+            >
               Export Inquiry
             </a>
           </div>

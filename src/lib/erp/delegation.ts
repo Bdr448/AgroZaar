@@ -85,7 +85,8 @@ async function fetchDelegations() {
   try {
     const { data, error } = await supabase
       .from("delegations")
-      .select(`
+      .select(
+        `
         id,
         permissions,
         duration,
@@ -94,7 +95,8 @@ async function fetchDelegations() {
         status,
         delegator:delegator_id ( name ),
         delegatee:delegatee_id ( name, role )
-      `)
+      `,
+      )
       .order("starts_at", { ascending: false });
 
     if (error) throw error;
@@ -122,7 +124,8 @@ async function fetchAuditLog() {
   try {
     const { data, error } = await supabase
       .from("delegation_audit_logs")
-      .select(`
+      .select(
+        `
         id,
         action,
         module,
@@ -131,7 +134,8 @@ async function fetchAuditLog() {
         timestamp,
         permission_source,
         user:user_id ( name, role )
-      `)
+      `,
+      )
       .order("timestamp", { ascending: false });
 
     if (error) throw error;
@@ -166,19 +170,15 @@ if (typeof window !== "undefined" && !initialized) {
   // Subscribe to delegations changes
   supabase
     .channel("schema-db-changes")
-    .on(
-      "postgres_changes",
-      { event: "*", schema: "public", table: "delegations" },
-      () => {
-        fetchDelegations();
-      }
-    )
+    .on("postgres_changes", { event: "*", schema: "public", table: "delegations" }, () => {
+      fetchDelegations();
+    })
     .on(
       "postgres_changes",
       { event: "*", schema: "public", table: "delegation_audit_logs" },
       () => {
         fetchAuditLog();
-      }
+      },
     )
     .subscribe();
 }
@@ -227,7 +227,9 @@ export async function createDelegation(input: {
   }
 
   // 2. Fetch delegator user ID (current active auth session)
-  const { data: { session } } = await supabase.auth.getSession();
+  const {
+    data: { session },
+  } = await supabase.auth.getSession();
   const delegatorId = session?.user.id;
 
   if (!delegatorId) {
@@ -246,16 +248,13 @@ export async function createDelegation(input: {
   });
 
   if (error) throw error;
-  
+
   // Refresh cache
   await fetchDelegations();
 }
 
 export async function revokeDelegation(id: string) {
-  const { error } = await supabase
-    .from("delegations")
-    .update({ status: "revoked" })
-    .eq("id", id);
+  const { error } = await supabase.from("delegations").update({ status: "revoked" }).eq("id", id);
 
   if (error) throw error;
 

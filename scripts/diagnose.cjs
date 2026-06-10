@@ -6,7 +6,7 @@ const client = new Client({
   database: "postgres",
   user: "postgres.wefogwllfidvnkxgswjd",
   password: "Bhavya@12345@",
-  ssl: { rejectUnauthorized: false }
+  ssl: { rejectUnauthorized: false },
 });
 
 async function main() {
@@ -20,7 +20,7 @@ async function main() {
     FROM information_schema.routines 
     WHERE routine_name = 'handle_new_user' AND routine_schema = 'public';
   `);
-  
+
   if (res.rows.length === 0) {
     console.log("Trigger function 'handle_new_user' not found!");
   } else {

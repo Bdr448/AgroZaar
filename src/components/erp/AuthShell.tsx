@@ -30,12 +30,16 @@ export function AuthShell({
           </span>
           <span className="flex flex-col items-start leading-none">
             <span className="font-heading text-lg font-extrabold text-spice-brown">Agrozaar</span>
-            <span className="text-[0.65rem] font-medium tracking-[0.22em] text-muted-foreground">FOODS LLP</span>
+            <span className="text-[0.65rem] font-medium tracking-[0.22em] text-muted-foreground">
+              FOODS LLP
+            </span>
           </span>
         </Link>
 
         <div className="rounded-2xl border border-border bg-card p-8 shadow-card">
-          <div className={`mx-auto mb-5 flex h-14 w-14 items-center justify-center rounded-full ${tone}`}>
+          <div
+            className={`mx-auto mb-5 flex h-14 w-14 items-center justify-center rounded-full ${tone}`}
+          >
             {icon}
           </div>
           <h1 className="font-heading text-2xl font-bold text-foreground">{title}</h1>

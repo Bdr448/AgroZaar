@@ -32,8 +32,8 @@ interface Invoice {
   // Items
   items: LineItem[];
   // Financial
-  discount: number;   // %
-  taxRate: number;    // %
+  discount: number; // %
+  taxRate: number; // %
   notes: string;
   paymentTerms: string;
   bankDetails: string;
@@ -47,11 +47,11 @@ const subtotal = (items: LineItem[]) => items.reduce((s, i) => s + i.qty * i.rat
 const calcInvoice = (inv: Invoice) => {
   // Always coerce to number — form inputs can leave these as strings
   const discPct = Number(inv.discount) || 0;
-  const taxPct  = Number(inv.taxRate)  || 0;
-  const sub     = subtotal(inv.items);
+  const taxPct = Number(inv.taxRate) || 0;
+  const sub = subtotal(inv.items);
   const discAmt = (sub * discPct) / 100;
   const taxable = sub - discAmt;
-  const taxAmt  = (taxable * taxPct) / 100;
+  const taxAmt = (taxable * taxPct) / 100;
   return { sub, discAmt, taxable, taxAmt, total: taxable + taxAmt };
 };
 
@@ -60,8 +60,7 @@ const fmt = (n: number) =>
   "\u20B9" + n.toLocaleString("en-IN", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 
 // PDF formatter — jsPDF built-in helvetica has no U+20B9 glyph; use plain ASCII
-const fmtPdf = (n: number) =>
-  "Rs. " + n.toFixed(2).replace(/\B(?=(\d{3})+(?!\d))/g, ",");
+const fmtPdf = (n: number) => "Rs. " + n.toFixed(2).replace(/\B(?=(\d{3})+(?!\d))/g, ",");
 
 const newItem = (): LineItem => ({ description: "", qty: 1, unit: "Kg", rate: 0 });
 
@@ -72,8 +71,8 @@ const STATUS_STYLE: Record<string, string> = {
 };
 
 /* ─── PDF colours (Agrozaar brand) ──────────────────────── */
-const BRAND = { r: 232, g: 155, b: 0 };      // turmeric #E89B00
-const DARK  = { r: 31,  g: 31,  b: 31 };
+const BRAND = { r: 232, g: 155, b: 0 }; // turmeric #E89B00
+const DARK = { r: 31, g: 31, b: 31 };
 const LIGHT = { r: 250, g: 248, b: 245 };
 
 /* ─── PDF Generator ─────────────────────────────────────── */
@@ -101,7 +100,11 @@ function downloadInvoicePDF(inv: Invoice, role: RoleId) {
   doc.setTextColor(200, 195, 188);
   doc.text("Premium Spices & Food Products", 40, 67);
   doc.text("GSTIN: 24ABCDE1234F1Z5  |  FSSAI: 10023012000001", 40, 80);
-  doc.text("Village Deesa, Banaskantha, Gujarat – 385535  |  info@agrozaar.in  |  +91 98765 43210", 40, 93);
+  doc.text(
+    "Village Deesa, Banaskantha, Gujarat – 385535  |  info@agrozaar.in  |  +91 98765 43210",
+    40,
+    93,
+  );
 
   // ── INVOICE badge (right) ──
   doc.setFillColor(BRAND.r, BRAND.g, BRAND.b);
@@ -200,20 +203,21 @@ function downloadInvoicePDF(inv: Invoice, role: RoleId) {
   const showFull = ["super-admin", "admin", "accountant", "partner"].includes(role);
 
   // Right-side totals block: fixed column positions
-  const MARGIN_R = 40;           // right page margin
-  const LABEL_X  = totalsX;     // label left edge
-  const VALUE_X  = W - MARGIN_R; // value right-aligned anchor (inside margin)
-  const ROW_H    = 22;
+  const MARGIN_R = 40; // right page margin
+  const LABEL_X = totalsX; // label left edge
+  const VALUE_X = W - MARGIN_R; // value right-aligned anchor (inside margin)
+  const ROW_H = 22;
 
   const rows: [string, string][] = [["Subtotal", fmtPdf(sub)]];
   if (showFull) {
-    if (Number(inv.discount) > 0) rows.push([`Discount (${inv.discount}%)`, `- ${fmtPdf(discAmt)}`]);
+    if (Number(inv.discount) > 0)
+      rows.push([`Discount (${inv.discount}%)`, `- ${fmtPdf(discAmt)}`]);
     rows.push([`Tax / GST (${inv.taxRate}%)`, fmtPdf(taxAmt)]);
   }
   rows.push(["TOTAL", fmtPdf(total)]);
 
   rows.forEach(([label, val], i) => {
-    const rowY   = finalY + i * ROW_H;
+    const rowY = finalY + i * ROW_H;
     const isTotal = label === "TOTAL";
 
     if (isTotal) {
@@ -275,7 +279,12 @@ function downloadInvoicePDF(inv: Invoice, role: RoleId) {
   doc.setFont("helvetica", "italic");
   doc.setFontSize(8);
   doc.setTextColor(180, 170, 155);
-  doc.text("Thank you for your business. This is a computer-generated invoice.", W / 2, pageH - 14, { align: "center" });
+  doc.text(
+    "Thank you for your business. This is a computer-generated invoice.",
+    W / 2,
+    pageH - 14,
+    { align: "center" },
+  );
 
   doc.save(`${inv.id}-${inv.customerName.replace(/\s+/g, "_")}.pdf`);
 }
@@ -283,37 +292,64 @@ function downloadInvoicePDF(inv: Invoice, role: RoleId) {
 /* ─── Seed data ──────────────────────────────────────────── */
 const SEED: Invoice[] = [
   {
-    id: "INV-2025-001", date: "2025-06-01", dueDate: "2025-06-15", status: "Paid",
-    customerName: "Fresh Mart Pvt Ltd", customerAddress: "12, Ring Road, Ahmedabad, Gujarat – 380001",
-    customerGST: "24AABCF1234G1Z5", customerEmail: "accounts@freshmart.in", customerPhone: "+91 98001 12345",
+    id: "INV-2025-001",
+    date: "2025-06-01",
+    dueDate: "2025-06-15",
+    status: "Paid",
+    customerName: "Fresh Mart Pvt Ltd",
+    customerAddress: "12, Ring Road, Ahmedabad, Gujarat – 380001",
+    customerGST: "24AABCF1234G1Z5",
+    customerEmail: "accounts@freshmart.in",
+    customerPhone: "+91 98001 12345",
     items: [
       { description: "Premium Turmeric Powder (1 Kg Pack)", qty: 200, unit: "Kg", rate: 120 },
       { description: "Red Chilli Powder (500g Pack)", qty: 150, unit: "Kg", rate: 95 },
     ],
-    discount: 5, taxRate: 5, notes: "Delivery within 3 working days.", paymentTerms: "Net 15",
+    discount: 5,
+    taxRate: 5,
+    notes: "Delivery within 3 working days.",
+    paymentTerms: "Net 15",
     bankDetails: "Bank: HDFC Bank\nA/C: 50200012345678\nIFSC: HDFC0001234\nBranch: Deesa, Gujarat",
   },
   {
-    id: "INV-2025-002", date: "2025-06-03", dueDate: "2025-06-17", status: "Pending",
-    customerName: "Spice World Exports", customerAddress: "Plot 45, GIDC, Surat, Gujarat – 395010",
-    customerGST: "24BBBCE5678H2Z1", customerEmail: "purchase@spiceworld.com", customerPhone: "+91 97000 55555",
+    id: "INV-2025-002",
+    date: "2025-06-03",
+    dueDate: "2025-06-17",
+    status: "Pending",
+    customerName: "Spice World Exports",
+    customerAddress: "Plot 45, GIDC, Surat, Gujarat – 395010",
+    customerGST: "24BBBCE5678H2Z1",
+    customerEmail: "purchase@spiceworld.com",
+    customerPhone: "+91 97000 55555",
     items: [
       { description: "Cumin Seeds (Export Grade)", qty: 500, unit: "Kg", rate: 185 },
       { description: "Coriander Powder", qty: 300, unit: "Kg", rate: 80 },
       { description: "Garam Masala Blend", qty: 100, unit: "Kg", rate: 210 },
     ],
-    discount: 2, taxRate: 5, notes: "Export invoice. FOB terms applicable.", paymentTerms: "Net 30",
+    discount: 2,
+    taxRate: 5,
+    notes: "Export invoice. FOB terms applicable.",
+    paymentTerms: "Net 30",
     bankDetails: "Bank: SBI\nA/C: 31234567890\nIFSC: SBIN0001234\nBranch: Deesa Main",
   },
   {
-    id: "INV-2025-003", date: "2025-06-05", dueDate: "2025-06-19", status: "Overdue",
-    customerName: "Green Valley Foods", customerAddress: "Warehouse 7, APMC, Pune, Maharashtra – 411019",
-    customerGST: "27CCCDE9012I3Z7", customerEmail: "billing@greenvalley.co.in", customerPhone: "+91 96000 77777",
+    id: "INV-2025-003",
+    date: "2025-06-05",
+    dueDate: "2025-06-19",
+    status: "Overdue",
+    customerName: "Green Valley Foods",
+    customerAddress: "Warehouse 7, APMC, Pune, Maharashtra – 411019",
+    customerGST: "27CCCDE9012I3Z7",
+    customerEmail: "billing@greenvalley.co.in",
+    customerPhone: "+91 96000 77777",
     items: [
       { description: "Dry Ginger Powder", qty: 250, unit: "Kg", rate: 160 },
       { description: "Black Pepper Whole", qty: 100, unit: "Kg", rate: 420 },
     ],
-    discount: 0, taxRate: 12, notes: "Second reminder – payment overdue.", paymentTerms: "Net 14",
+    discount: 0,
+    taxRate: 12,
+    notes: "Second reminder – payment overdue.",
+    paymentTerms: "Net 14",
     bankDetails: "Bank: ICICI Bank\nA/C: 123456789012\nIFSC: ICIC0000123\nBranch: Deesa",
   },
 ];
@@ -324,10 +360,16 @@ const emptyInvoice = (): Invoice => ({
   date: new Date().toISOString().slice(0, 10),
   dueDate: new Date(Date.now() + 15 * 86400000).toISOString().slice(0, 10),
   status: "Pending",
-  customerName: "", customerAddress: "", customerGST: "", customerEmail: "", customerPhone: "",
+  customerName: "",
+  customerAddress: "",
+  customerGST: "",
+  customerEmail: "",
+  customerPhone: "",
   items: [newItem()],
-  discount: 0, taxRate: 5,
-  notes: "", paymentTerms: "Net 15",
+  discount: 0,
+  taxRate: 5,
+  notes: "",
+  paymentTerms: "Net 15",
   bankDetails: "Bank: HDFC Bank\nA/C: 50200012345678\nIFSC: HDFC0001234\nBranch: Deesa, Gujarat",
 });
 
@@ -351,12 +393,22 @@ function BillingPage() {
 
   const totals = {
     paid: invoices.filter((i) => i.status === "Paid").reduce((s, i) => s + calcInvoice(i).total, 0),
-    pending: invoices.filter((i) => i.status === "Pending").reduce((s, i) => s + calcInvoice(i).total, 0),
-    overdue: invoices.filter((i) => i.status === "Overdue").reduce((s, i) => s + calcInvoice(i).total, 0),
+    pending: invoices
+      .filter((i) => i.status === "Pending")
+      .reduce((s, i) => s + calcInvoice(i).total, 0),
+    overdue: invoices
+      .filter((i) => i.status === "Overdue")
+      .reduce((s, i) => s + calcInvoice(i).total, 0),
   };
 
-  const openNew = () => { setEditing(emptyInvoice()); setFormOpen(true); };
-  const openEdit = (inv: Invoice) => { setEditing({ ...inv, items: inv.items.map((i) => ({ ...i })) }); setFormOpen(true); };
+  const openNew = () => {
+    setEditing(emptyInvoice());
+    setFormOpen(true);
+  };
+  const openEdit = (inv: Invoice) => {
+    setEditing({ ...inv, items: inv.items.map((i) => ({ ...i })) });
+    setFormOpen(true);
+  };
 
   const saveInvoice = (inv: Invoice) => {
     setInvoices((prev) => {
@@ -392,7 +444,12 @@ function BillingPage() {
       {/* Summary */}
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
         <SummaryCard label="Paid" amount={totals.paid} color="text-green-600" bg="bg-green-50" />
-        <SummaryCard label="Pending" amount={totals.pending} color="text-yellow-600" bg="bg-yellow-50" />
+        <SummaryCard
+          label="Pending"
+          amount={totals.pending}
+          color="text-yellow-600"
+          bg="bg-yellow-50"
+        />
         <SummaryCard label="Overdue" amount={totals.overdue} color="text-red-600" bg="bg-red-50" />
       </div>
 
@@ -446,14 +503,19 @@ function BillingPage() {
               </tr>
             ) : (
               filtered.map((inv) => (
-                <tr key={inv.id} className="border-b last:border-0 hover:bg-muted/30 transition-colors">
+                <tr
+                  key={inv.id}
+                  className="border-b last:border-0 hover:bg-muted/30 transition-colors"
+                >
                   <td className="px-4 py-3 font-mono font-semibold text-primary">{inv.id}</td>
                   <td className="px-4 py-3 font-medium">{inv.customerName}</td>
                   <td className="px-4 py-3">{fmt(calcInvoice(inv).total)}</td>
                   <td className="px-4 py-3 text-muted-foreground">{inv.date}</td>
                   <td className="px-4 py-3 text-muted-foreground">{inv.dueDate}</td>
                   <td className="px-4 py-3">
-                    <span className={`rounded-full px-2.5 py-0.5 text-xs font-semibold ${STATUS_STYLE[inv.status]}`}>
+                    <span
+                      className={`rounded-full px-2.5 py-0.5 text-xs font-semibold ${STATUS_STYLE[inv.status]}`}
+                    >
                       {inv.status}
                     </span>
                   </td>
@@ -474,10 +536,16 @@ function BillingPage() {
                       </button>
                       {canCreate(role) && (
                         <>
-                          <button onClick={() => openEdit(inv)} className="text-xs text-muted-foreground hover:text-primary transition-colors">
+                          <button
+                            onClick={() => openEdit(inv)}
+                            className="text-xs text-muted-foreground hover:text-primary transition-colors"
+                          >
                             Edit
                           </button>
-                          <button onClick={() => deleteInvoice(inv.id)} className="text-xs text-red-500 hover:text-red-600 transition-colors">
+                          <button
+                            onClick={() => deleteInvoice(inv.id)}
+                            className="text-xs text-red-500 hover:text-red-600 transition-colors"
+                          >
                             <Trash2 className="h-3.5 w-3.5" />
                           </button>
                         </>
@@ -514,24 +582,48 @@ function BillingPage() {
 }
 
 /* ─── Summary Card ───────────────────────────────────────── */
-function SummaryCard({ label, amount, color, bg }: { label: string; amount: number; color: string; bg: string }) {
+function SummaryCard({
+  label,
+  amount,
+  color,
+  bg,
+}: {
+  label: string;
+  amount: number;
+  color: string;
+  bg: string;
+}) {
   return (
     <div className={`rounded-xl border p-4 ${bg}`}>
-      <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">{label}</p>
+      <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+        {label}
+      </p>
       <p className={`mt-1 text-2xl font-bold ${color}`}>{fmt(amount)}</p>
     </div>
   );
 }
 
 /* ─── Invoice Form Modal ─────────────────────────────────── */
-function InvoiceFormModal({ invoice, onSave, onClose }: { invoice: Invoice; onSave: (inv: Invoice) => void; onClose: () => void }) {
+function InvoiceFormModal({
+  invoice,
+  onSave,
+  onClose,
+}: {
+  invoice: Invoice;
+  onSave: (inv: Invoice) => void;
+  onClose: () => void;
+}) {
   const [form, setForm] = useState<Invoice>(invoice);
 
   const set = <K extends keyof Invoice>(k: K, v: Invoice[K]) => setForm((p) => ({ ...p, [k]: v }));
   const setItem = (i: number, k: keyof LineItem, v: string | number) =>
-    setForm((p) => ({ ...p, items: p.items.map((it, idx) => (idx === i ? { ...it, [k]: v } : it)) }));
+    setForm((p) => ({
+      ...p,
+      items: p.items.map((it, idx) => (idx === i ? { ...it, [k]: v } : it)),
+    }));
   const addItem = () => setForm((p) => ({ ...p, items: [...p.items, newItem()] }));
-  const removeItem = (i: number) => setForm((p) => ({ ...p, items: p.items.filter((_, idx) => idx !== i) }));
+  const removeItem = (i: number) =>
+    setForm((p) => ({ ...p, items: p.items.filter((_, idx) => idx !== i) }));
 
   const { sub, discAmt, taxAmt, total } = calcInvoice(form);
 
@@ -551,7 +643,12 @@ function InvoiceFormModal({ invoice, onSave, onClose }: { invoice: Invoice; onSa
           <div className="grid grid-cols-2 gap-4 sm:grid-cols-4">
             <Field label="Invoice #" value={form.id} onChange={(v) => set("id", v)} />
             <Field label="Date" type="date" value={form.date} onChange={(v) => set("date", v)} />
-            <Field label="Due Date" type="date" value={form.dueDate} onChange={(v) => set("dueDate", v)} />
+            <Field
+              label="Due Date"
+              type="date"
+              value={form.dueDate}
+              onChange={(v) => set("dueDate", v)}
+            />
             <div>
               <label className="mb-1 block text-xs font-medium text-muted-foreground">Status</label>
               <select
@@ -559,21 +656,44 @@ function InvoiceFormModal({ invoice, onSave, onClose }: { invoice: Invoice; onSa
                 onChange={(e) => set("status", e.target.value as Invoice["status"])}
                 className="w-full rounded-lg border bg-background px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary"
               >
-                {["Paid", "Pending", "Overdue"].map((s) => <option key={s}>{s}</option>)}
+                {["Paid", "Pending", "Overdue"].map((s) => (
+                  <option key={s}>{s}</option>
+                ))}
               </select>
             </div>
           </div>
 
           {/* Customer */}
           <section>
-            <p className="mb-3 text-xs font-semibold uppercase tracking-wider text-primary">Customer Details</p>
+            <p className="mb-3 text-xs font-semibold uppercase tracking-wider text-primary">
+              Customer Details
+            </p>
             <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-              <Field label="Customer Name" value={form.customerName} onChange={(v) => set("customerName", v)} />
-              <Field label="Email" type="email" value={form.customerEmail} onChange={(v) => set("customerEmail", v)} />
-              <Field label="Phone" value={form.customerPhone} onChange={(v) => set("customerPhone", v)} />
-              <Field label="GSTIN" value={form.customerGST} onChange={(v) => set("customerGST", v)} />
+              <Field
+                label="Customer Name"
+                value={form.customerName}
+                onChange={(v) => set("customerName", v)}
+              />
+              <Field
+                label="Email"
+                type="email"
+                value={form.customerEmail}
+                onChange={(v) => set("customerEmail", v)}
+              />
+              <Field
+                label="Phone"
+                value={form.customerPhone}
+                onChange={(v) => set("customerPhone", v)}
+              />
+              <Field
+                label="GSTIN"
+                value={form.customerGST}
+                onChange={(v) => set("customerGST", v)}
+              />
               <div className="sm:col-span-2">
-                <label className="mb-1 block text-xs font-medium text-muted-foreground">Address</label>
+                <label className="mb-1 block text-xs font-medium text-muted-foreground">
+                  Address
+                </label>
                 <textarea
                   rows={2}
                   value={form.customerAddress}
@@ -586,7 +706,9 @@ function InvoiceFormModal({ invoice, onSave, onClose }: { invoice: Invoice; onSa
 
           {/* Line items */}
           <section>
-            <p className="mb-3 text-xs font-semibold uppercase tracking-wider text-primary">Line Items</p>
+            <p className="mb-3 text-xs font-semibold uppercase tracking-wider text-primary">
+              Line Items
+            </p>
             <div className="space-y-2">
               <div className="grid grid-cols-12 gap-2 text-xs font-medium text-muted-foreground px-1">
                 <span className="col-span-5">Description</span>
@@ -604,7 +726,8 @@ function InvoiceFormModal({ invoice, onSave, onClose }: { invoice: Invoice; onSa
                     onChange={(e) => setItem(i, "description", e.target.value)}
                   />
                   <input
-                    type="number" min={1}
+                    type="number"
+                    min={1}
                     className="col-span-2 rounded-lg border bg-background px-3 py-2 text-sm text-right focus:outline-none focus:ring-2 focus:ring-primary"
                     value={it.qty}
                     onChange={(e) => setItem(i, "qty", +e.target.value)}
@@ -614,10 +737,13 @@ function InvoiceFormModal({ invoice, onSave, onClose }: { invoice: Invoice; onSa
                     value={it.unit}
                     onChange={(e) => setItem(i, "unit", e.target.value)}
                   >
-                    {["Kg", "Ton", "Pcs", "Box", "Bag", "Ltr"].map((u) => <option key={u}>{u}</option>)}
+                    {["Kg", "Ton", "Pcs", "Box", "Bag", "Ltr"].map((u) => (
+                      <option key={u}>{u}</option>
+                    ))}
                   </select>
                   <input
-                    type="number" min={0}
+                    type="number"
+                    min={0}
                     className="col-span-2 rounded-lg border bg-background px-3 py-2 text-sm text-right focus:outline-none focus:ring-2 focus:ring-primary"
                     value={it.rate}
                     onChange={(e) => setItem(i, "rate", +e.target.value)}
@@ -631,7 +757,10 @@ function InvoiceFormModal({ invoice, onSave, onClose }: { invoice: Invoice; onSa
                   </button>
                 </div>
               ))}
-              <button onClick={addItem} className="flex items-center gap-1.5 text-sm text-primary hover:underline mt-1">
+              <button
+                onClick={addItem}
+                className="flex items-center gap-1.5 text-sm text-primary hover:underline mt-1"
+              >
                 <PlusCircle className="h-4 w-4" /> Add Item
               </button>
             </div>
@@ -641,27 +770,45 @@ function InvoiceFormModal({ invoice, onSave, onClose }: { invoice: Invoice; onSa
           <div className="flex justify-end">
             <div className="w-64 space-y-1 text-sm">
               <div className="flex justify-between text-muted-foreground">
-                <span>Subtotal</span><span>{fmt(sub)}</span>
+                <span>Subtotal</span>
+                <span>{fmt(sub)}</span>
               </div>
               {form.discount > 0 && (
                 <div className="flex justify-between text-muted-foreground">
-                  <span>Discount ({form.discount}%)</span><span>- {fmt(discAmt)}</span>
+                  <span>Discount ({form.discount}%)</span>
+                  <span>- {fmt(discAmt)}</span>
                 </div>
               )}
               <div className="flex justify-between text-muted-foreground">
-                <span>Tax / GST ({form.taxRate}%)</span><span>{fmt(taxAmt)}</span>
+                <span>Tax / GST ({form.taxRate}%)</span>
+                <span>{fmt(taxAmt)}</span>
               </div>
               <div className="flex justify-between border-t pt-1 font-bold text-base">
-                <span>Total</span><span className="text-primary">{fmt(total)}</span>
+                <span>Total</span>
+                <span className="text-primary">{fmt(total)}</span>
               </div>
             </div>
           </div>
 
           {/* Financial settings */}
           <div className="grid grid-cols-2 gap-4 sm:grid-cols-4">
-            <Field label="Discount %" type="number" value={String(form.discount)} onChange={(v) => set("discount", +v)} />
-            <Field label="Tax / GST %" type="number" value={String(form.taxRate)} onChange={(v) => set("taxRate", +v)} />
-            <Field label="Payment Terms" value={form.paymentTerms} onChange={(v) => set("paymentTerms", v)} />
+            <Field
+              label="Discount %"
+              type="number"
+              value={String(form.discount)}
+              onChange={(v) => set("discount", +v)}
+            />
+            <Field
+              label="Tax / GST %"
+              type="number"
+              value={String(form.taxRate)}
+              onChange={(v) => set("taxRate", +v)}
+            />
+            <Field
+              label="Payment Terms"
+              value={form.paymentTerms}
+              onChange={(v) => set("paymentTerms", v)}
+            />
           </div>
 
           {/* Notes + Bank */}
@@ -677,7 +824,9 @@ function InvoiceFormModal({ invoice, onSave, onClose }: { invoice: Invoice; onSa
               />
             </div>
             <div>
-              <label className="mb-1 block text-xs font-medium text-muted-foreground">Bank / Payment Details</label>
+              <label className="mb-1 block text-xs font-medium text-muted-foreground">
+                Bank / Payment Details
+              </label>
               <textarea
                 rows={3}
                 value={form.bankDetails}
@@ -707,8 +856,16 @@ function InvoiceFormModal({ invoice, onSave, onClose }: { invoice: Invoice; onSa
 }
 
 /* ─── Invoice View Modal ─────────────────────────────────── */
-function InvoiceViewModal({ invoice: inv, role, onClose, onDownload }: {
-  invoice: Invoice; role: RoleId; onClose: () => void; onDownload: () => void;
+function InvoiceViewModal({
+  invoice: inv,
+  role,
+  onClose,
+  onDownload,
+}: {
+  invoice: Invoice;
+  role: RoleId;
+  onClose: () => void;
+  onDownload: () => void;
 }) {
   const { sub, discAmt, taxAmt, total } = calcInvoice(inv);
   const showFinancial = ["super-admin", "admin", "accountant", "partner"].includes(role);
@@ -741,16 +898,23 @@ function InvoiceViewModal({ invoice: inv, role, onClose, onDownload }: {
             <ViewField label="Date" value={inv.date} />
             <ViewField label="Due Date" value={inv.dueDate} />
             <ViewField label="Payment Terms" value={inv.paymentTerms} />
-            <ViewField label="Status" value={
-              <span className={`rounded-full px-2.5 py-0.5 text-xs font-semibold ${STATUS_STYLE[inv.status]}`}>
-                {inv.status}
-              </span>
-            } />
+            <ViewField
+              label="Status"
+              value={
+                <span
+                  className={`rounded-full px-2.5 py-0.5 text-xs font-semibold ${STATUS_STYLE[inv.status]}`}
+                >
+                  {inv.status}
+                </span>
+              }
+            />
           </div>
 
           {/* Customer */}
           <div className="rounded-xl bg-muted/40 p-4 text-sm">
-            <p className="mb-2 text-xs font-semibold uppercase tracking-wider text-primary">Bill To</p>
+            <p className="mb-2 text-xs font-semibold uppercase tracking-wider text-primary">
+              Bill To
+            </p>
             <p className="font-semibold">{inv.customerName}</p>
             <p className="text-muted-foreground">{inv.customerAddress}</p>
             {inv.customerGST && <p className="text-muted-foreground">GSTIN: {inv.customerGST}</p>}
@@ -790,7 +954,13 @@ function InvoiceViewModal({ invoice: inv, role, onClose, onDownload }: {
             <div className="flex justify-end">
               <div className="w-60 space-y-1.5 text-sm">
                 <TotalRow label="Subtotal" value={fmt(sub)} />
-                {inv.discount > 0 && <TotalRow label={`Discount (${inv.discount}%)`} value={`- ${fmt(discAmt)}`} muted />}
+                {inv.discount > 0 && (
+                  <TotalRow
+                    label={`Discount (${inv.discount}%)`}
+                    value={`- ${fmt(discAmt)}`}
+                    muted
+                  />
+                )}
                 <TotalRow label={`Tax / GST (${inv.taxRate}%)`} value={fmt(taxAmt)} muted />
                 <div className="flex justify-between border-t pt-2 font-bold text-base">
                   <span>Total</span>
@@ -808,14 +978,20 @@ function InvoiceViewModal({ invoice: inv, role, onClose, onDownload }: {
           {/* Bank details — accountant/admin only */}
           {["super-admin", "admin", "accountant"].includes(role) && inv.bankDetails && (
             <div className="rounded-xl bg-muted/40 p-4 text-sm">
-              <p className="mb-1 text-xs font-semibold uppercase tracking-wider text-primary">Bank / Payment Details</p>
-              <pre className="whitespace-pre-wrap font-sans text-muted-foreground text-xs">{inv.bankDetails}</pre>
+              <p className="mb-1 text-xs font-semibold uppercase tracking-wider text-primary">
+                Bank / Payment Details
+              </p>
+              <pre className="whitespace-pre-wrap font-sans text-muted-foreground text-xs">
+                {inv.bankDetails}
+              </pre>
             </div>
           )}
 
           {inv.notes && (
             <div className="rounded-xl bg-muted/40 p-4 text-sm">
-              <p className="mb-1 text-xs font-semibold uppercase tracking-wider text-primary">Notes</p>
+              <p className="mb-1 text-xs font-semibold uppercase tracking-wider text-primary">
+                Notes
+              </p>
               <p className="text-muted-foreground">{inv.notes}</p>
             </div>
           )}
@@ -826,7 +1002,17 @@ function InvoiceViewModal({ invoice: inv, role, onClose, onDownload }: {
 }
 
 /* ─── Small helpers ──────────────────────────────────────── */
-function Field({ label, value, onChange, type = "text" }: { label: string; value: string; onChange: (v: string) => void; type?: string }) {
+function Field({
+  label,
+  value,
+  onChange,
+  type = "text",
+}: {
+  label: string;
+  value: string;
+  onChange: (v: string) => void;
+  type?: string;
+}) {
   return (
     <div>
       <label className="mb-1 block text-xs font-medium text-muted-foreground">{label}</label>
@@ -852,7 +1038,8 @@ function ViewField({ label, value }: { label: string; value: React.ReactNode }) 
 function TotalRow({ label, value, muted }: { label: string; value: string; muted?: boolean }) {
   return (
     <div className={`flex justify-between ${muted ? "text-muted-foreground" : ""}`}>
-      <span>{label}</span><span>{value}</span>
+      <span>{label}</span>
+      <span>{value}</span>
     </div>
   );
 }

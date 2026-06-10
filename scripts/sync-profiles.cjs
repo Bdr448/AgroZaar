@@ -38,8 +38,11 @@ const supabase = createClient(supabaseUrl, serviceRoleKey);
 
 async function sync() {
   console.log("Fetching auth.users list...");
-  const { data: { users }, error } = await supabase.auth.admin.listUsers();
-  
+  const {
+    data: { users },
+    error,
+  } = await supabase.auth.admin.listUsers();
+
   if (error) {
     console.error("Error listing users:", error.message);
     return;
@@ -62,18 +65,19 @@ async function sync() {
 
   for (const user of users) {
     const email = user.email;
-    const metadata = DEMO_USERS_MAP[email] || { name: user.user_metadata?.name || "ERP User", role: user.user_metadata?.role || "warehouse" };
-    
+    const metadata = DEMO_USERS_MAP[email] || {
+      name: user.user_metadata?.name || "ERP User",
+      role: user.user_metadata?.role || "warehouse",
+    };
+
     console.log(`Syncing profile for ${email} with ID: ${user.id}...`);
 
-    const { error: insertError } = await supabase
-      .from("user_profiles")
-      .upsert({
-        id: user.id,
-        email: email,
-        name: metadata.name,
-        role: metadata.role
-      });
+    const { error: insertError } = await supabase.from("user_profiles").upsert({
+      id: user.id,
+      email: email,
+      name: metadata.name,
+      role: metadata.role,
+    });
 
     if (insertError) {
       console.error(`  Error syncing profile for ${email}:`, insertError.message);
