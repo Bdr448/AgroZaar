@@ -1,20 +1,47 @@
 import { useState } from "react";
 import { Phone, Mail, MapPin, MessageCircle, Send } from "lucide-react";
+import { supabase } from "@/lib/supabase";
 
 const details = [
-  { icon: Phone, label: "Phone", value: "+91 90000 00000", href: "tel:+919000000000" },
+  { icon: Phone, label: "Phone", value: "+91 81288 53311", href: "tel:+918128853311" },
   {
     icon: Mail,
     label: "Email",
-    value: "info@agrozaarfoods.com",
-    href: "mailto:info@agrozaarfoods.com",
+    value: "sharadpatel2306@gmail.com",
+    href: "mailto:sharadpatel2306@gmail.com",
   },
-  { icon: MapPin, label: "Head Office", value: "Unjha, Gujarat, India" },
+  { icon: MapPin, label: "Head Office", value: "GF 33 Samay Arcade, Patan Road, Unjha, Mehsana, Gujarat, India - 384170" },
   { icon: MapPin, label: "Processing Unit", value: "Khoraj, Gandhinagar, Gujarat" },
 ];
 
 export function Contact() {
   const [sent, setSent] = useState(false);
+
+  const onSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
+    e.preventDefault();
+    const formData = new FormData(e.currentTarget);
+    const name = formData.get("name") as string;
+    const company = formData.get("company") as string;
+    const email = formData.get("email") as string;
+    const phone = formData.get("phone") as string;
+
+    try {
+      const { error } = await supabase.from("customers").insert([
+        {
+          name,
+          company: company || "Website Inquiry",
+          email,
+          phone,
+        },
+      ]);
+      if (error) {
+        console.error("Failed to save lead:", error.message);
+      }
+    } catch (err) {
+      console.error("Error inserting lead:", err);
+    }
+    setSent(true);
+  };
 
   return (
     <section id="contact" className="section-pad bg-secondary/40">
@@ -52,7 +79,7 @@ export function Contact() {
           </div>
 
           <a
-            href="https://wa.me/919000000000"
+            href="https://wa.me/918128853311"
             target="_blank"
             rel="noreferrer"
             className="mt-6 inline-flex items-center gap-2 rounded-lg bg-accent px-6 py-3 text-sm font-semibold text-accent-foreground transition-transform hover:-translate-y-0.5"
@@ -62,10 +89,7 @@ export function Contact() {
         </div>
 
         <form
-          onSubmit={(e) => {
-            e.preventDefault();
-            setSent(true);
-          }}
+          onSubmit={onSubmit}
           className="rounded-3xl border border-border bg-card p-7 shadow-card md:p-9"
         >
           <h3 className="font-heading text-xl font-bold text-spice-brown">Send an Inquiry</h3>

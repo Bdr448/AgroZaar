@@ -37,10 +37,16 @@ export function Footer() {
               true taste of Indian spices worldwide.
             </p>
             <div className="mt-6 flex gap-3">
-              {[Facebook, Instagram, Linkedin].map((Icon, i) => (
+              {[
+                { icon: Facebook, href: "#" },
+                { icon: Instagram, href: "#" },
+                { icon: Linkedin, href: "https://linkedin.com/in/sharad-patel-8935732b9" },
+              ].map(({ icon: Icon, href }, i) => (
                 <a
                   key={i}
-                  href="#"
+                  href={href}
+                  target={href !== "#" ? "_blank" : undefined}
+                  rel={href !== "#" ? "noopener noreferrer" : undefined}
                   className="flex h-9 w-9 items-center justify-center rounded-lg bg-primary-foreground/10 transition-colors hover:bg-primary hover:text-primary-foreground"
                   aria-label="Social link"
                 >

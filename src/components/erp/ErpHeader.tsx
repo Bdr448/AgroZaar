@@ -19,6 +19,7 @@ import {
 import { cn } from "@/lib/utils";
 import { logout, type ErpUser } from "@/lib/erp/auth";
 import { ROLE_LABELS } from "@/lib/erp/roles";
+import { supabase } from "@/lib/supabase";
 
 /* ─── Notification data ─────────────────────────────────── */
 const NOTIFICATIONS = [
@@ -211,23 +212,58 @@ export function ErpHeader({ user, onOpenMobile }: { user: ErpUser; onOpenMobile:
 function NotificationBell() {
   const { navigate } = useRouter();
   const [open, setOpen] = useState(false);
-  const [readIds, setReadIds] = useState<Set<number>>(new Set([4])); // id 4 starts read
+  const [readIds, setReadIds] = useState<Set<string | number>>(new Set([4])); // id 4 starts read
   const ref = useOutside(() => setOpen(false));
+  const [dynamicNotifs, setDynamicNotifs] = useState<any[]>([]);
 
-  const unreadCount = NOTIFICATIONS.filter((n) => !readIds.has(n.id)).length;
+  const fetchRecentLeads = async () => {
+    try {
+      const { data } = await supabase
+        .from("customers")
+        .select("id, name, company, email, phone, created_at")
+        .order("created_at", { ascending: false })
+        .limit(5);
 
-  const markRead = (id: number) => {
+      if (data) {
+        const mapped = data.map((c: any) => ({
+          id: `lead-${c.id}`,
+          icon: User,
+          iconClass: "text-primary bg-primary/10",
+          title: "New CRM Lead Inquiry",
+          desc: `${c.name} (${c.company}) · Mail: ${c.email}`,
+          time: new Date(c.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+          to: "/app/crm",
+          read: false,
+        }));
+        setDynamicNotifs(mapped);
+      }
+    } catch (err) {
+      console.error("Error fetching dynamic notifications:", err);
+    }
+  };
+
+  useEffect(() => {
+    fetchRecentLeads();
+    // Poll every 15 seconds to keep it fresh
+    const interval = setInterval(fetchRecentLeads, 15000);
+    return () => clearInterval(interval);
+  }, []);
+
+  const allNotifications = [...dynamicNotifs, ...NOTIFICATIONS];
+  const unreadCount = allNotifications.filter((n) => !readIds.has(n.id)).length;
+
+  const markRead = (id: string | number) => {
     setReadIds((prev) => new Set([...prev, id]));
   };
 
-  const handleNotifClick = (n: (typeof NOTIFICATIONS)[0]) => {
+  const handleNotifClick = (n: any) => {
     markRead(n.id);
     setOpen(false);
     navigate(n.to);
   };
 
   const markAllRead = () => {
-    setReadIds(new Set(NOTIFICATIONS.map((n) => n.id)));
+    setReadIds(new Set(allNotifications.map((n) => n.id)));
     setOpen(false);
     navigate("/app/notifications");
   };
@@ -263,7 +299,7 @@ function NotificationBell() {
             </div>
             {unreadCount > 0 && (
               <button
-                onClick={() => setReadIds(new Set(NOTIFICATIONS.map((n) => n.id)))}
+                onClick={() => setReadIds(new Set(allNotifications.map((n) => n.id)))}
                 className="text-xs font-medium text-primary hover:underline"
               >
                 Mark all read
@@ -273,7 +309,7 @@ function NotificationBell() {
 
           {/* Notification rows */}
           <div className="max-h-[340px] overflow-y-auto">
-            {NOTIFICATIONS.map((n) => {
+            {allNotifications.map((n) => {
               const Icon = n.icon;
               const isRead = readIds.has(n.id);
               return (

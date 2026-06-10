@@ -3,6 +3,7 @@ import { supabase } from "@/lib/supabase";
 import { DataTable, type Column } from "./DataTable";
 import { PageHeader, Panel, StatCard, StatusBadge } from "./widgets";
 import { toast } from "sonner";
+import { useSession } from "@/lib/erp/auth";
 import {
   Plus,
   Users,
@@ -31,6 +32,7 @@ import {
   Receipt,
   Trash2,
   AlertTriangle,
+  Pencil,
 } from "lucide-react";
 
 const inr = (n: number) => `₹${Number(n).toLocaleString("en-IN")}`;
@@ -308,16 +310,21 @@ export async function seedModuleDemoData() {
    1. CUSTOMERS & SUPPLIERS MODULES
    ==================================================================== */
 export function CustomersModule() {
+  const session = useSession();
   const [data, setData] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [showForm, setShowForm] = useState(false);
+  const [editId, setEditId] = useState<string | null>(null);
   const [form, setForm] = useState({ name: "", company: "", email: "", phone: "", gstin: "" });
+
+  const canManage = ["super-admin", "admin", "partner", "sales"].includes(session?.role || "");
 
   const loadData = async () => {
     setLoading(true);
     const { data: res } = await supabase
       .from("customers")
       .select("*")
+      .eq("is_deleted", false)
       .order("created_at", { ascending: false });
     setData(res || []);
     setLoading(false);
@@ -330,11 +337,46 @@ export function CustomersModule() {
   const onSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!form.name) return toast.error("Name is required");
-    const { error } = await supabase.from("customers").insert([form]);
-    if (error) return toast.error(error.message);
-    toast.success("Customer added successfully");
+    
+    if (editId) {
+      const { error } = await supabase
+        .from("customers")
+        .update(form)
+        .eq("id", editId);
+      if (error) return toast.error(error.message);
+      toast.success("Customer updated successfully");
+    } else {
+      const { error } = await supabase.from("customers").insert([form]);
+      if (error) return toast.error(error.message);
+      toast.success("Customer added successfully");
+    }
+    
     setForm({ name: "", company: "", email: "", phone: "", gstin: "" });
+    setEditId(null);
     setShowForm(false);
+    loadData();
+  };
+
+  const handleEdit = (customer: any) => {
+    setForm({
+      name: customer.name || "",
+      company: customer.company || "",
+      email: customer.email || "",
+      phone: customer.phone || "",
+      gstin: customer.gstin || "",
+    });
+    setEditId(customer.id);
+    setShowForm(true);
+  };
+
+  const handleDelete = async (id: string) => {
+    if (!window.confirm("Are you sure you want to delete this customer?")) return;
+    const { error } = await supabase
+      .from("customers")
+      .update({ is_deleted: true })
+      .eq("id", id);
+    if (error) return toast.error(error.message);
+    toast.success("Customer deleted successfully (Soft Deleted)");
     loadData();
   };
 
@@ -344,6 +386,33 @@ export function CustomersModule() {
     { key: "email", header: "Email" },
     { key: "phone", header: "Phone" },
     { key: "gstin", header: "GSTIN" },
+    ...(canManage
+      ? [
+          {
+            key: "actions",
+            header: "Actions",
+            align: "right" as const,
+            render: (r: any) => (
+              <div className="flex justify-end gap-2">
+                <button
+                  onClick={() => handleEdit(r)}
+                  className="rounded p-1 hover:bg-secondary text-primary transition-colors"
+                  title="Edit"
+                >
+                  <Pencil className="h-4 w-4" />
+                </button>
+                <button
+                  onClick={() => handleDelete(r.id)}
+                  className="rounded p-1 hover:bg-secondary text-destructive transition-colors"
+                  title="Delete (Soft)"
+                >
+                  <Trash2 className="h-4 w-4" />
+                </button>
+              </div>
+            ),
+          },
+        ]
+      : []),
   ];
 
   return (
@@ -352,17 +421,23 @@ export function CustomersModule() {
         title="Customer Management"
         subtitle="Manage client portfolios, billing contacts, and tax info"
         action={
-          <button
-            onClick={() => setShowForm(!showForm)}
-            className="inline-flex items-center gap-1.5 rounded-lg bg-primary px-4 py-2 text-sm font-semibold text-primary-foreground shadow-soft hover:bg-primary/90"
-          >
-            <Plus className="h-4 w-4" /> {showForm ? "View Directory" : "Add Customer"}
-          </button>
+          canManage && (
+            <button
+              onClick={() => {
+                setEditId(null);
+                setForm({ name: "", company: "", email: "", phone: "", gstin: "" });
+                setShowForm(!showForm);
+              }}
+              className="inline-flex items-center gap-1.5 rounded-lg bg-primary px-4 py-2 text-sm font-semibold text-primary-foreground shadow-soft hover:bg-primary/90"
+            >
+              <Plus className="h-4 w-4" /> {showForm ? "View Directory" : "Add Customer"}
+            </button>
+          )
         }
       />
 
       {showForm ? (
-        <Panel title="Add New Customer">
+        <Panel title={editId ? "Edit Customer" : "Add New Customer"}>
           <form onSubmit={onSubmit} className="grid gap-4 p-6 sm:grid-cols-2">
             <div className="space-y-1.5">
               <label className="text-sm font-medium">Customer Name *</label>
@@ -415,7 +490,7 @@ export function CustomersModule() {
               type="submit"
               className="w-full rounded-lg bg-primary py-2.5 text-sm font-semibold text-primary-foreground sm:col-span-2"
             >
-              Save Customer
+              {editId ? "Update Customer" : "Save Customer"}
             </button>
           </form>
         </Panel>
@@ -449,16 +524,21 @@ export function CustomersModule() {
 }
 
 export function SuppliersModule() {
+  const session = useSession();
   const [data, setData] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [showForm, setShowForm] = useState(false);
+  const [editId, setEditId] = useState<string | null>(null);
   const [form, setForm] = useState({ name: "", company: "", email: "", phone: "", gstin: "" });
+
+  const canManage = ["super-admin", "admin", "partner", "warehouse", "supervisor"].includes(session?.role || "");
 
   const loadData = async () => {
     setLoading(true);
     const { data: res } = await supabase
       .from("suppliers")
       .select("*")
+      .eq("is_deleted", false)
       .order("created_at", { ascending: false });
     setData(res || []);
     setLoading(false);
@@ -471,11 +551,46 @@ export function SuppliersModule() {
   const onSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!form.name) return toast.error("Name is required");
-    const { error } = await supabase.from("suppliers").insert([form]);
-    if (error) return toast.error(error.message);
-    toast.success("Supplier added successfully");
+    
+    if (editId) {
+      const { error } = await supabase
+        .from("suppliers")
+        .update(form)
+        .eq("id", editId);
+      if (error) return toast.error(error.message);
+      toast.success("Supplier updated successfully");
+    } else {
+      const { error } = await supabase.from("suppliers").insert([form]);
+      if (error) return toast.error(error.message);
+      toast.success("Supplier added successfully");
+    }
+    
     setForm({ name: "", company: "", email: "", phone: "", gstin: "" });
+    setEditId(null);
     setShowForm(false);
+    loadData();
+  };
+
+  const handleEdit = (supplier: any) => {
+    setForm({
+      name: supplier.name || "",
+      company: supplier.company || "",
+      email: supplier.email || "",
+      phone: supplier.phone || "",
+      gstin: supplier.gstin || "",
+    });
+    setEditId(supplier.id);
+    setShowForm(true);
+  };
+
+  const handleDelete = async (id: string) => {
+    if (!window.confirm("Are you sure you want to delete this supplier?")) return;
+    const { error } = await supabase
+      .from("suppliers")
+      .update({ is_deleted: true })
+      .eq("id", id);
+    if (error) return toast.error(error.message);
+    toast.success("Supplier deleted successfully (Soft Deleted)");
     loadData();
   };
 
@@ -485,6 +600,33 @@ export function SuppliersModule() {
     { key: "email", header: "Email" },
     { key: "phone", header: "Phone" },
     { key: "gstin", header: "GSTIN" },
+    ...(canManage
+      ? [
+          {
+            key: "actions",
+            header: "Actions",
+            align: "right" as const,
+            render: (r: any) => (
+              <div className="flex justify-end gap-2">
+                <button
+                  onClick={() => handleEdit(r)}
+                  className="rounded p-1 hover:bg-secondary text-primary transition-colors"
+                  title="Edit"
+                >
+                  <Pencil className="h-4 w-4" />
+                </button>
+                <button
+                  onClick={() => handleDelete(r.id)}
+                  className="rounded p-1 hover:bg-secondary text-destructive transition-colors"
+                  title="Delete (Soft)"
+                >
+                  <Trash2 className="h-4 w-4" />
+                </button>
+              </div>
+            ),
+          },
+        ]
+      : []),
   ];
 
   return (
@@ -493,17 +635,23 @@ export function SuppliersModule() {
         title="Supplier Management"
         subtitle="Manage agricultural farms, wholesale mandi merchants, and raw spice vendors"
         action={
-          <button
-            onClick={() => setShowForm(!showForm)}
-            className="inline-flex items-center gap-1.5 rounded-lg bg-primary px-4 py-2 text-sm font-semibold text-primary-foreground shadow-soft hover:bg-primary/90"
-          >
-            <Plus className="h-4 w-4" /> {showForm ? "View Directory" : "Add Supplier"}
-          </button>
+          canManage && (
+            <button
+              onClick={() => {
+                setEditId(null);
+                setForm({ name: "", company: "", email: "", phone: "", gstin: "" });
+                setShowForm(!showForm);
+              }}
+              className="inline-flex items-center gap-1.5 rounded-lg bg-primary px-4 py-2 text-sm font-semibold text-primary-foreground shadow-soft hover:bg-primary/90"
+            >
+              <Plus className="h-4 w-4" /> {showForm ? "View Directory" : "Add Supplier"}
+            </button>
+          )
         }
       />
 
       {showForm ? (
-        <Panel title="Add New Supplier">
+        <Panel title={editId ? "Edit Supplier" : "Add New Supplier"}>
           <form onSubmit={onSubmit} className="grid gap-4 p-6 sm:grid-cols-2">
             <div className="space-y-1.5">
               <label className="text-sm font-medium">Supplier Name *</label>
@@ -556,7 +704,7 @@ export function SuppliersModule() {
               type="submit"
               className="w-full rounded-lg bg-primary py-2.5 text-sm font-semibold text-primary-foreground sm:col-span-2"
             >
-              Save Supplier
+              {editId ? "Update Supplier" : "Save Supplier"}
             </button>
           </form>
         </Panel>
@@ -593,8 +741,10 @@ export function SuppliersModule() {
    2. PRODUCTS MODULE
    ==================================================================== */
 export function ProductsModule() {
+  const session = useSession();
   const [data, setData] = useState<any[]>([]);
   const [showForm, setShowForm] = useState(false);
+  const [editId, setEditId] = useState<string | null>(null);
   const [form, setForm] = useState({
     name: "",
     sku: "",
@@ -605,8 +755,13 @@ export function ProductsModule() {
     retailer_price: 0,
   });
 
+  const canManage = ["super-admin", "admin", "supervisor"].includes(session?.role || "");
+
   const loadData = async () => {
-    const { data: products } = await supabase.from("products").select("*, product_prices(*)");
+    const { data: products } = await supabase
+      .from("products")
+      .select("*, product_prices(*)")
+      .eq("is_deleted", false);
     setData(products || []);
   };
 
@@ -618,30 +773,61 @@ export function ProductsModule() {
     e.preventDefault();
     if (!form.name || !form.sku) return toast.error("Name and SKU are required");
 
-    const { data: p, error } = await supabase
-      .from("products")
-      .insert([
-        {
+    if (editId) {
+      const { error } = await supabase
+        .from("products")
+        .update({
           name: form.name,
           sku: form.sku,
           hsn_code: form.hsn_code,
           gst_rate: form.gst_rate,
-        },
-      ])
-      .select()
-      .single();
+        })
+        .eq("id", editId);
 
-    if (error) return toast.error(error.message);
+      if (error) return toast.error(error.message);
 
-    if (p) {
-      await supabase.from("product_prices").insert([
-        { product_id: p.id, tier: "standard", price: form.standard_price },
-        { product_id: p.id, tier: "distributor", price: form.distributor_price },
-        { product_id: p.id, tier: "retailer", price: form.retailer_price },
-      ]);
+      // Upsert pricing tiers
+      await supabase.from("product_prices").upsert(
+        { product_id: editId, tier: "standard", price: form.standard_price },
+        { onConflict: "product_id,tier" }
+      );
+      await supabase.from("product_prices").upsert(
+        { product_id: editId, tier: "distributor", price: form.distributor_price },
+        { onConflict: "product_id,tier" }
+      );
+      await supabase.from("product_prices").upsert(
+        { product_id: editId, tier: "retailer", price: form.retailer_price },
+        { onConflict: "product_id,tier" }
+      );
+
+      toast.success("Product and pricing tiers updated!");
+    } else {
+      const { data: p, error } = await supabase
+        .from("products")
+        .insert([
+          {
+            name: form.name,
+            sku: form.sku,
+            hsn_code: form.hsn_code,
+            gst_rate: form.gst_rate,
+          },
+        ])
+        .select()
+        .single();
+
+      if (error) return toast.error(error.message);
+
+      if (p) {
+        await supabase.from("product_prices").insert([
+          { product_id: p.id, tier: "standard", price: form.standard_price },
+          { product_id: p.id, tier: "distributor", price: form.distributor_price },
+          { product_id: p.id, tier: "retailer", price: form.retailer_price },
+        ]);
+      }
+
+      toast.success("Product and pricing tiers saved!");
     }
 
-    toast.success("Product and pricing tiers saved!");
     setForm({
       name: "",
       sku: "",
@@ -651,7 +837,36 @@ export function ProductsModule() {
       distributor_price: 0,
       retailer_price: 0,
     });
+    setEditId(null);
     setShowForm(false);
+    loadData();
+  };
+
+  const handleEdit = (product: any) => {
+    const getPriceVal = (tier: string) => {
+      return product.product_prices?.find((p: any) => p.tier === tier)?.price || 0;
+    };
+    setForm({
+      name: product.name || "",
+      sku: product.sku || "",
+      hsn_code: product.hsn_code || "",
+      gst_rate: product.gst_rate || 5.0,
+      standard_price: getPriceVal("standard"),
+      distributor_price: getPriceVal("distributor"),
+      retailer_price: getPriceVal("retailer"),
+    });
+    setEditId(product.id);
+    setShowForm(true);
+  };
+
+  const handleDelete = async (id: string) => {
+    if (!window.confirm("Are you sure you want to delete this product SKU?")) return;
+    const { error } = await supabase
+      .from("products")
+      .update({ is_deleted: true })
+      .eq("id", id);
+    if (error) return toast.error(error.message);
+    toast.success("Product deleted successfully (Soft Deleted)");
     loadData();
   };
 
@@ -667,6 +882,33 @@ export function ProductsModule() {
     { key: "standard", header: "Std Price", render: (r) => getPrice(r, "standard") },
     { key: "distributor", header: "Dist Price", render: (r) => getPrice(r, "distributor") },
     { key: "retailer", header: "Retail Price", render: (r) => getPrice(r, "retailer") },
+    ...(canManage
+      ? [
+          {
+            key: "actions",
+            header: "Actions",
+            align: "right" as const,
+            render: (r: any) => (
+              <div className="flex justify-end gap-2">
+                <button
+                  onClick={() => handleEdit(r)}
+                  className="rounded p-1 hover:bg-secondary text-primary transition-colors"
+                  title="Edit"
+                >
+                  <Pencil className="h-4 w-4" />
+                </button>
+                <button
+                  onClick={() => handleDelete(r.id)}
+                  className="rounded p-1 hover:bg-secondary text-destructive transition-colors"
+                  title="Delete (Soft)"
+                >
+                  <Trash2 className="h-4 w-4" />
+                </button>
+              </div>
+            ),
+          },
+        ]
+      : []),
   ];
 
   return (
@@ -675,17 +917,31 @@ export function ProductsModule() {
         title="Products Catalog"
         subtitle="Manage export spice SKU catalogs and active pricing structures"
         action={
-          <button
-            onClick={() => setShowForm(!showForm)}
-            className="inline-flex items-center gap-1.5 rounded-lg bg-primary px-4 py-2 text-sm font-semibold text-primary-foreground shadow-soft hover:bg-primary/90"
-          >
-            <Plus className="h-4 w-4" /> {showForm ? "View Catalog" : "Add Product"}
-          </button>
+          canManage && (
+            <button
+              onClick={() => {
+                setEditId(null);
+                setForm({
+                  name: "",
+                  sku: "",
+                  hsn_code: "",
+                  gst_rate: 5.0,
+                  standard_price: 0,
+                  distributor_price: 0,
+                  retailer_price: 0,
+                });
+                setShowForm(!showForm);
+              }}
+              className="inline-flex items-center gap-1.5 rounded-lg bg-primary px-4 py-2 text-sm font-semibold text-primary-foreground shadow-soft hover:bg-primary/90"
+            >
+              <Plus className="h-4 w-4" /> {showForm ? "View Catalog" : "Add Product"}
+            </button>
+          )
         }
       />
 
       {showForm ? (
-        <Panel title="Create New Product SKU">
+        <Panel title={editId ? "Edit Product SKU" : "Create New Product SKU"}>
           <form onSubmit={onSubmit} className="grid gap-4 p-6 sm:grid-cols-2">
             <div className="space-y-1.5">
               <label className="text-sm font-medium">Product Name *</label>
@@ -759,7 +1015,7 @@ export function ProductsModule() {
               type="submit"
               className="w-full rounded-lg bg-primary py-2.5 text-sm font-semibold text-primary-foreground sm:col-span-2 mt-2"
             >
-              Save Product SKU & Prices
+              {editId ? "Update Product SKU & Prices" : "Save Product SKU & Prices"}
             </button>
           </form>
         </Panel>
