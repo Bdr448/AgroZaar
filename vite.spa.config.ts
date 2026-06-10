@@ -90,12 +90,12 @@ export default defineConfig({
     },
   },
   preview: {
-    allowedHosts: ["agrozaar.onrender.com", ".onrender.com"],
+    allowedHosts: ["agrozaar-foods.onrender.com", "agrozaar.onrender.com", ".onrender.com"],
     port: 10000,
     host: true,
   },
   server: {
-    allowedHosts: ["agrozaar.onrender.com", ".onrender.com"],
+    allowedHosts: ["agrozaar-foods.onrender.com", "agrozaar.onrender.com", ".onrender.com"],
     port: 10000,
     host: true,
   },

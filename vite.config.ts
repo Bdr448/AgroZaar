@@ -14,10 +14,10 @@ export default defineConfig({
   },
   vite: {
     server: {
-      allowedHosts: ["agrozaar.onrender.com"],
+      allowedHosts: ["agrozaar-foods.onrender.com", "agrozaar.onrender.com"],
     },
     preview: {
-      allowedHosts: ["agrozaar.onrender.com"],
+      allowedHosts: ["agrozaar-foods.onrender.com", "agrozaar.onrender.com"],
     },
   },
 });
