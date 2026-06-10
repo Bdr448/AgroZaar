@@ -24,6 +24,7 @@ export interface ErpUser {
 const listeners = new Set<() => void>();
 let cachedUser: ErpUser | null = null;
 let initialized = false;
+let fetchingUserId: string | null = null;
 const AUTH_TIMEOUT_MS = 12_000;
 
 function withTimeout<T>(promise: PromiseLike<T>, message: string): Promise<T> {
@@ -83,10 +84,18 @@ async function fetchUserProfile(userId: string, email: string): Promise<ErpUser>
 // Defer profile fetch to prevent deadlocks in Supabase client request queue
 const fetchUserProfileDeferred = (userId: string, email: string) => {
   if (cachedUser && cachedUser.id === userId) return;
+  if (fetchingUserId === userId) return;
+
+  fetchingUserId = userId;
+
   setTimeout(async () => {
-    if (cachedUser && cachedUser.id === userId) return;
-    cachedUser = await fetchUserProfile(userId, email);
-    emit();
+    try {
+      if (cachedUser && cachedUser.id === userId) return;
+      cachedUser = await fetchUserProfile(userId, email);
+      emit();
+    } finally {
+      fetchingUserId = null;
+    }
   }, 10);
 };
 
@@ -154,9 +163,14 @@ export async function login(email: string, role: RoleId, password?: string) {
   if (error) throw error;
 
   if (data.user) {
-    cachedUser = await fetchUserProfile(data.user.id, data.user.email || email);
-    emit();
-    return cachedUser;
+    fetchingUserId = data.user.id;
+    try {
+      cachedUser = await fetchUserProfile(data.user.id, data.user.email || email);
+      emit();
+      return cachedUser;
+    } finally {
+      fetchingUserId = null;
+    }
   }
 
   // Fallback — if Supabase returns no user but also no error (edge case)
