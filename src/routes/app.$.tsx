@@ -100,12 +100,512 @@ function LeadsModule() {
 }
 
 function QuotationsModule() {
+  const session = useSession();
+  const [data, setData] = useState<any[]>([]);
+  const [customers, setCustomers] = useState<any[]>([]);
+  const [requests, setRequests] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [showForm, setShowForm] = useState(false);
+  const [editId, setEditId] = useState<string | null>(null);
+
+  const [form, setForm] = useState({
+    customer_id: "",
+    valid_till: new Date(Date.now() + 7 * 24 * 3600 * 1000).toISOString().split("T")[0],
+    subtotal: "",
+    tax_rate: "18",
+    status: "draft" as any,
+  });
+
+  // Change request modal state
+  const [showReqModal, setShowReqModal] = useState(false);
+  const [reqRecord, setReqRecord] = useState<any>(null);
+  const [reqType, setReqType] = useState<"edit" | "delete">("edit");
+  const [reqReason, setReqReason] = useState("");
+
+  const isSuperOrAdmin = ["super-admin", "admin"].includes(session?.role || "");
+  const isSalesOrPartner = ["partner", "sales"].includes(session?.role || "");
+  const canWriteDirect = isSuperOrAdmin || isSalesOrPartner;
+  const canDeleteDirect = isSuperOrAdmin;
+
+  const loadData = async () => {
+    setLoading(true);
+    try {
+      // 1. Fetch Customers
+      const { data: custs } = await supabase
+        .from("customers")
+        .select("id, name, company")
+        .eq("is_deleted", false)
+        .order("name");
+      setCustomers(custs || []);
+
+      // 2. Fetch Quotations
+      const { data: quotes } = await supabase
+        .from("quotations")
+        .select("*, customers(name, company)")
+        .eq("is_deleted", false)
+        .order("created_at", { ascending: false });
+      setData(quotes || []);
+
+      // 3. Fetch Change Requests for Quotations
+      const { data: reqs } = await supabase
+        .from("change_requests")
+        .select("*")
+        .eq("module_name", "Quotations");
+      setRequests(reqs || []);
+    } catch (err: any) {
+      console.error("Failed to load quotations:", err.message);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    loadData();
+  }, []);
+
+  const getRequestStatus = (recordId: string, type: "edit" | "delete") => {
+    return requests.find((r) => r.record_id === recordId && r.action_type === type);
+  };
+
+  const handleOpenReqModal = (record: any, type: "edit" | "delete") => {
+    setReqRecord(record);
+    setReqType(type);
+    setReqReason("");
+    setShowReqModal(true);
+  };
+
+  const submitChangeRequest = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!reqReason) return toast.error("Reason is required");
+
+    const custName = reqRecord.customers?.name || "Client";
+    const displayName = `Quote for ${custName} - ₹${reqRecord.grand_total}`;
+
+    const { error } = await supabase.from("change_requests").insert([
+      {
+        requester_id: session?.id,
+        module_name: "Quotations",
+        record_id: reqRecord.id,
+        record_display_name: displayName,
+        action_type: reqType,
+        reason: reqReason,
+        status: "pending",
+      },
+    ]);
+
+    if (error) return toast.error(error.message);
+    toast.success("Request submitted to Admin.");
+    setShowReqModal(false);
+    loadData();
+  };
+
+  const handleEdit = (q: any) => {
+    const sub = parseFloat(q.subtotal || 0);
+    const tax = parseFloat(q.tax_total || 0);
+    const rate = sub > 0 ? Math.round((tax / sub) * 100) : 18;
+
+    setForm({
+      customer_id: q.customer_id,
+      valid_till: q.valid_till,
+      subtotal: String(q.subtotal),
+      tax_rate: String(rate),
+      status: q.status,
+    });
+    setEditId(q.id);
+    setShowForm(true);
+  };
+
+  const executeDelete = async (id: string, reqId?: string) => {
+    if (!window.confirm("Are you sure you want to delete this quotation?")) return;
+    const { error } = await supabase
+      .from("quotations")
+      .update({ is_deleted: true })
+      .eq("id", id);
+
+    if (error) return toast.error(error.message);
+
+    if (reqId) {
+      await supabase.from("change_requests").delete().eq("id", reqId);
+    }
+    toast.success("Quotation deleted successfully.");
+    loadData();
+  };
+
+  const onSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!form.customer_id || !form.subtotal) {
+      return toast.error("Please fill in customer and subtotal");
+    }
+
+    const sub = parseFloat(form.subtotal);
+    const rate = parseFloat(form.tax_rate) / 100;
+    const tax = sub * rate;
+    const grand = sub + tax;
+
+    const payload = {
+      customer_id: form.customer_id,
+      valid_till: form.valid_till,
+      subtotal: sub,
+      tax_total: tax,
+      grand_total: grand,
+      status: form.status,
+    };
+
+    if (editId) {
+      const { error } = await supabase.from("quotations").update(payload).eq("id", editId);
+      if (error) return toast.error(error.message);
+
+      const req = getRequestStatus(editId, "edit");
+      if (req) {
+        await supabase.from("change_requests").delete().eq("id", req.id);
+      }
+      toast.success("Quotation updated successfully!");
+      setEditId(null);
+    } else {
+      const { error } = await supabase.from("quotations").insert([payload]);
+      if (error) return toast.error(error.message);
+      toast.success("Quotation created successfully!");
+    }
+
+    setForm({
+      customer_id: "",
+      valid_till: new Date(Date.now() + 7 * 24 * 3600 * 1000).toISOString().split("T")[0],
+      subtotal: "",
+      tax_rate: "18",
+      status: "draft",
+    });
+    setShowForm(false);
+    loadData();
+  };
+
+  const inr = (n: number) => "₹" + Number(n).toLocaleString("en-IN");
+
+  const columns: Column<any>[] = [
+    {
+      key: "created_at",
+      header: "Date",
+      render: (r) => new Date(r.created_at).toLocaleDateString(),
+    },
+    {
+      key: "customer",
+      header: "Prospect Client",
+      render: (r) => (
+        <div>
+          <p className="font-semibold text-foreground">{r.customers?.name}</p>
+          <p className="text-xs text-muted-foreground">{r.customers?.company}</p>
+        </div>
+      ),
+    },
+    {
+      key: "valid_till",
+      header: "Valid Till",
+      render: (r) => new Date(r.valid_till).toLocaleDateString(),
+    },
+    {
+      key: "grand_total",
+      header: "Grand Total",
+      align: "right",
+      render: (r) => <span className="font-semibold">{inr(r.grand_total)}</span>,
+    },
+    {
+      key: "status",
+      header: "Status",
+      align: "center",
+      render: (r) => (
+        <StatusBadge
+          label={r.status}
+          tone={
+            r.status === "accepted"
+              ? "success"
+              : r.status === "sent"
+                ? "info"
+                : r.status === "declined"
+                  ? "danger"
+                  : "neutral"
+          }
+        />
+      ),
+    },
+    {
+      key: "actions",
+      header: "Actions",
+      align: "right",
+      render: (r: any) => {
+        const editReq = getRequestStatus(r.id, "edit");
+        const delReq = getRequestStatus(r.id, "delete");
+
+        return (
+          <div className="flex justify-end gap-2 items-center text-xs">
+            {canWriteDirect || editReq?.status === "approved" ? (
+              <button
+                onClick={() => handleEdit(r)}
+                className="rounded px-2.5 py-1.5 bg-primary/15 hover:bg-primary/25 text-primary transition-colors font-semibold cursor-pointer"
+                title={editReq?.status === "approved" ? "Approved by Admin" : "Edit"}
+              >
+                Edit {editReq?.status === "approved" && "✅"}
+              </button>
+            ) : editReq?.status === "pending" ? (
+              <span className="text-muted-foreground italic font-medium px-2">Edit Pending...</span>
+            ) : (
+              <button
+                onClick={() => handleOpenReqModal(r, "edit")}
+                className="rounded px-2.5 py-1.5 border border-input hover:bg-secondary text-muted-foreground transition-colors font-medium cursor-pointer"
+              >
+                Req Edit
+              </button>
+            )}
+
+            {canDeleteDirect ? (
+              <button
+                onClick={() => executeDelete(r.id)}
+                className="rounded p-1.5 hover:bg-secondary text-destructive transition-colors cursor-pointer"
+                title="Delete"
+              >
+                <Trash2 className="h-4 w-4" />
+              </button>
+            ) : delReq?.status === "approved" ? (
+              <button
+                onClick={() => executeDelete(r.id, delReq.id)}
+                className="rounded px-2.5 py-1.5 bg-destructive/15 hover:bg-destructive/25 text-destructive transition-colors font-semibold cursor-pointer"
+                title="Approved by Admin"
+              >
+                Delete Now ✅
+              </button>
+            ) : delReq?.status === "pending" ? (
+              <span className="text-muted-foreground italic font-medium px-2">Delete Pending...</span>
+            ) : (
+              <button
+                onClick={() => handleOpenReqModal(r, "delete")}
+                className="rounded px-2.5 py-1.5 border border-input hover:bg-secondary text-destructive/80 hover:text-destructive transition-colors font-medium cursor-pointer"
+              >
+                Req Del
+              </button>
+            )}
+          </div>
+        );
+      },
+    },
+  ];
+
   return (
-    <Stub
-      title="Quotations"
-      subtitle="Prepare and send price quotations to prospects"
-      icon={FileText}
-    />
+    <div className="space-y-6">
+      <PageHeader
+        title="Prospect Quotations"
+        subtitle="Prepare, send and track pricing quotes for business leads"
+        action={
+          <button
+            onClick={() => {
+              setEditId(null);
+              setForm({
+                customer_id: "",
+                valid_till: new Date(Date.now() + 7 * 24 * 3600 * 1000).toISOString().split("T")[0],
+                subtotal: "",
+                tax_rate: "18",
+                status: "draft",
+              });
+              setShowForm(!showForm);
+            }}
+            className="inline-flex items-center gap-1.5 rounded-lg bg-primary px-4 py-2 text-sm font-semibold text-primary-foreground shadow-soft hover:bg-primary/90 cursor-pointer"
+          >
+            <Plus className="h-4 w-4" /> {showForm ? "View All Quotes" : "New Quotation"}
+          </button>
+        }
+      />
+
+      {showForm ? (
+        <Panel title={editId ? "Edit Quotation Details" : "Draft New Quotation Proposal"}>
+          <form onSubmit={onSubmit} className="grid gap-4 p-6 sm:grid-cols-2">
+            <div className="space-y-1.5">
+              <label className="text-sm font-medium">Select Prospect Customer *</label>
+              <select
+                value={form.customer_id}
+                onChange={(e) => setForm({ ...form, customer_id: e.target.value })}
+                required
+                className="w-full rounded-lg border border-input bg-card px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-primary/20"
+              >
+                <option value="">-- Choose Lead Customer --</option>
+                {customers.map((c) => (
+                  <option key={c.id} value={c.id}>
+                    {c.name} {c.company ? `(${c.company})` : ""}
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            <div className="space-y-1.5">
+              <label className="text-sm font-medium">Validity Limit *</label>
+              <input
+                type="date"
+                value={form.valid_till}
+                onChange={(e) => setForm({ ...form, valid_till: e.target.value })}
+                required
+                className="w-full rounded-lg border border-input bg-card px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-primary/20"
+              />
+            </div>
+
+            <div className="space-y-1.5">
+              <label className="text-sm font-medium">Subtotal Amount (INR) *</label>
+              <input
+                type="number"
+                step="0.01"
+                value={form.subtotal}
+                onChange={(e) => setForm({ ...form, subtotal: e.target.value })}
+                required
+                placeholder="e.g. 150000"
+                className="w-full rounded-lg border border-input bg-card px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-primary/20"
+              />
+            </div>
+
+            <div className="space-y-1.5">
+              <label className="text-sm font-medium">GST Rate (%) *</label>
+              <select
+                value={form.tax_rate}
+                onChange={(e) => setForm({ ...form, tax_rate: e.target.value })}
+                className="w-full rounded-lg border border-input bg-card px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-primary/20"
+              >
+                <option value="5">5% (Essential Spices)</option>
+                <option value="12">12% (Processed Spice Mixes)</option>
+                <option value="18">18% (Standard Services/Fares)</option>
+                <option value="0">0% (Nil / Export Free)</option>
+              </select>
+            </div>
+
+            <div className="space-y-1.5">
+              <label className="text-sm font-medium">Proposal Status *</label>
+              <select
+                value={form.status}
+                onChange={(e) => setForm({ ...form, status: e.target.value as any })}
+                className="w-full rounded-lg border border-input bg-card px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-primary/20"
+              >
+                <option value="draft">Draft Proposal</option>
+                <option value="sent">Proposal Sent</option>
+                <option value="accepted">Accepted / Confirmed</option>
+                <option value="declined">Declined</option>
+              </select>
+            </div>
+
+            {form.subtotal && (
+              <div className="sm:col-span-2 rounded-lg bg-secondary/50 p-4 space-y-1 text-sm font-medium">
+                <div className="flex justify-between">
+                  <span className="text-muted-foreground">Subtotal:</span>
+                  <span>{inr(parseFloat(form.subtotal))}</span>
+                </div>
+                <div className="flex justify-between border-b border-border pb-1">
+                  <span className="text-muted-foreground">GST Tax ({form.tax_rate}%):</span>
+                  <span>{inr(parseFloat(form.subtotal) * (parseFloat(form.tax_rate) / 100))}</span>
+                </div>
+                <div className="flex justify-between font-bold text-base pt-1">
+                  <span>Grand Total:</span>
+                  <span>
+                    {inr(
+                      parseFloat(form.subtotal) +
+                        parseFloat(form.subtotal) * (parseFloat(form.tax_rate) / 100),
+                    )}
+                  </span>
+                </div>
+              </div>
+            )}
+
+            <div className="flex gap-3 sm:col-span-2 pt-2">
+              <button
+                type="submit"
+                className="rounded-lg bg-primary px-4 py-2.5 text-sm font-semibold text-primary-foreground hover:bg-primary/90 cursor-pointer"
+              >
+                {editId ? "Save Changes" : "Create Quotation"}
+              </button>
+              <button
+                type="button"
+                onClick={() => setShowForm(false)}
+                className="rounded-lg border border-input px-4 py-2.5 text-sm font-semibold hover:bg-secondary cursor-pointer"
+              >
+                Cancel
+              </button>
+            </div>
+          </form>
+        </Panel>
+      ) : (
+        <>
+          <div className="grid gap-4 sm:grid-cols-4">
+            <StatCard
+              label="Draft Proposals"
+              value={String(data.filter((q) => q.status === "draft").length)}
+              icon={FileText}
+              tone="neutral"
+            />
+            <StatCard
+              label="Sent Quotes"
+              value={String(data.filter((q) => q.status === "sent").length)}
+              icon={Send}
+              tone="info"
+            />
+            <StatCard
+              label="Accepted Pipeline"
+              value={String(data.filter((q) => q.status === "accepted").length)}
+              icon={ShieldCheck}
+              tone="primary"
+            />
+            <StatCard
+              label="Pipeline Value"
+              value={inr(
+                data
+                  .filter((q) => q.status === "accepted" || q.status === "sent")
+                  .reduce((acc, q) => acc + parseFloat(q.grand_total || 0), 0),
+              )}
+              icon={TrendingUp}
+              tone="brown"
+            />
+          </div>
+
+          {loading ? (
+            <div className="flex h-32 items-center justify-center rounded-xl border border-dashed border-border bg-card/60">
+              <p className="text-sm text-muted-foreground animate-pulse font-medium">
+                Querying database records...
+              </p>
+            </div>
+          ) : (
+            <DataTable columns={columns} data={data} />
+          )}
+        </>
+      )}
+
+      {/* Change Request Modal */}
+      {showReqModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-background/80 backdrop-blur-sm">
+          <Panel title={`Request ${reqType.toUpperCase()} Permission`} className="w-full max-w-md shadow-lg border">
+            <form onSubmit={submitChangeRequest} className="p-6 space-y-4">
+              <p className="text-sm text-muted-foreground">
+                You do not have direct permission to perform this {reqType} operation. Explain your reason to send an authorization request to the Admin.
+              </p>
+              <div className="space-y-1.5">
+                <label className="text-sm font-medium">Justification Reason *</label>
+                <textarea
+                  required
+                  value={reqReason}
+                  onChange={(e) => setReqReason(e.target.value)}
+                  placeholder="e.g. Mistake in entering tax rate, need to correct subtotal"
+                  className="w-full rounded-lg border border-input bg-card px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-primary/20 h-24"
+                />
+              </div>
+              <div className="flex justify-end gap-2">
+                <button
+                  type="button"
+                  onClick={() => setShowReqModal(false)}
+                  className="rounded-lg border border-input px-4 py-2 text-sm font-semibold hover:bg-secondary cursor-pointer"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  className="rounded-lg bg-primary px-4 py-2 text-sm font-semibold text-primary-foreground hover:bg-primary/90 cursor-pointer"
+                >
+                  Submit Request
+                </button>
+              </div>
+            </form>
+          </Panel>
+        </div>
+      )}
+    </div>
   );
 }
 
@@ -119,8 +619,454 @@ function SalesOrdersModule() {
 }
 
 function FollowUpsModule() {
+  const session = useSession();
+  const [data, setData] = useState<any[]>([]);
+  const [customers, setCustomers] = useState<any[]>([]);
+  const [requests, setRequests] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [showForm, setShowForm] = useState(false);
+  const [editId, setEditId] = useState<string | null>(null);
+
+  const [form, setForm] = useState({
+    customer_id: "",
+    title: "",
+    notes: "",
+    scheduled_at: new Date(Date.now() + 24 * 3600 * 1000).toISOString().slice(0, 16),
+    status: "pending" as any,
+  });
+
+  // Change request modal state
+  const [showReqModal, setShowReqModal] = useState(false);
+  const [reqRecord, setReqRecord] = useState<any>(null);
+  const [reqType, setReqType] = useState<"edit" | "delete">("edit");
+  const [reqReason, setReqReason] = useState("");
+
+  const isSuperOrAdmin = ["super-admin", "admin"].includes(session?.role || "");
+  const isSalesOrPartner = ["partner", "sales"].includes(session?.role || "");
+  const canWriteDirect = isSuperOrAdmin || isSalesOrPartner;
+  const canDeleteDirect = isSuperOrAdmin;
+
+  const loadData = async () => {
+    setLoading(true);
+    try {
+      // 1. Fetch Customers
+      const { data: custs } = await supabase
+        .from("customers")
+        .select("id, name, company")
+        .eq("is_deleted", false)
+        .order("name");
+      setCustomers(custs || []);
+
+      // 2. Fetch Follow Ups
+      const { data: follows } = await supabase
+        .from("follow_ups")
+        .select("*, customers(name, company)")
+        .eq("is_deleted", false)
+        .order("scheduled_at", { ascending: true });
+      setData(follows || []);
+
+      // 3. Fetch Change Requests for Follow Ups
+      const { data: reqs } = await supabase
+        .from("change_requests")
+        .select("*")
+        .eq("module_name", "FollowUps");
+      setRequests(reqs || []);
+    } catch (err: any) {
+      console.error("Failed to load follow-ups:", err.message);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    loadData();
+  }, []);
+
+  const getRequestStatus = (recordId: string, type: "edit" | "delete") => {
+    return requests.find((r) => r.record_id === recordId && r.action_type === type);
+  };
+
+  const handleOpenReqModal = (record: any, type: "edit" | "delete") => {
+    setReqRecord(record);
+    setReqType(type);
+    setReqReason("");
+    setShowReqModal(true);
+  };
+
+  const submitChangeRequest = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!reqReason) return toast.error("Reason is required");
+
+    const custName = reqRecord.customers?.name || "Client";
+    const displayName = `Follow up "${reqRecord.title}" for ${custName}`;
+
+    const { error } = await supabase.from("change_requests").insert([
+      {
+        requester_id: session?.id,
+        module_name: "FollowUps",
+        record_id: reqRecord.id,
+        record_display_name: displayName,
+        action_type: reqType,
+        reason: reqReason,
+        status: "pending",
+      },
+    ]);
+
+    if (error) return toast.error(error.message);
+    toast.success("Request submitted to Admin.");
+    setShowReqModal(false);
+    loadData();
+  };
+
+  const handleEdit = (f: any) => {
+    const dateStr = f.scheduled_at ? new Date(f.scheduled_at).toISOString().slice(0, 16) : "";
+
+    setForm({
+      customer_id: f.customer_id,
+      title: f.title,
+      notes: f.notes || "",
+      scheduled_at: dateStr,
+      status: f.status,
+    });
+    setEditId(f.id);
+    setShowForm(true);
+  };
+
+  const executeDelete = async (id: string, reqId?: string) => {
+    if (!window.confirm("Are you sure you want to delete this reminder?")) return;
+    const { error } = await supabase
+      .from("follow_ups")
+      .update({ is_deleted: true })
+      .eq("id", id);
+
+    if (error) return toast.error(error.message);
+
+    if (reqId) {
+      await supabase.from("change_requests").delete().eq("id", reqId);
+    }
+    toast.success("Reminder deleted successfully.");
+    loadData();
+  };
+
+  const onSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!form.customer_id || !form.title || !form.scheduled_at) {
+      return toast.error("Please fill in customer, title, and scheduled time");
+    }
+
+    const payload = {
+      customer_id: form.customer_id,
+      title: form.title,
+      notes: form.notes,
+      scheduled_at: new Date(form.scheduled_at).toISOString(),
+      status: form.status,
+      created_by: session?.id,
+    };
+
+    if (editId) {
+      const { error } = await supabase.from("follow_ups").update(payload).eq("id", editId);
+      if (error) return toast.error(error.message);
+
+      const req = getRequestStatus(editId, "edit");
+      if (req) {
+        await supabase.from("change_requests").delete().eq("id", req.id);
+      }
+      toast.success("Follow-up reminder updated!");
+      setEditId(null);
+    } else {
+      const { error } = await supabase.from("follow_ups").insert([payload]);
+      if (error) return toast.error(error.message);
+      toast.success("Follow-up reminder scheduled!");
+    }
+
+    setForm({
+      customer_id: "",
+      title: "",
+      notes: "",
+      scheduled_at: new Date(Date.now() + 24 * 3600 * 1000).toISOString().slice(0, 16),
+      status: "pending",
+    });
+    setShowForm(false);
+    loadData();
+  };
+
+  const columns: Column<any>[] = [
+    {
+      key: "scheduled_at",
+      header: "Scheduled Time",
+      sortable: true,
+      render: (r) => new Date(r.scheduled_at).toLocaleString("en-IN"),
+    },
+    {
+      key: "customer",
+      header: "Client Customer",
+      render: (r) => (
+        <div>
+          <p className="font-semibold text-foreground">{r.customers?.name}</p>
+          <p className="text-xs text-muted-foreground">{r.customers?.company}</p>
+        </div>
+      ),
+    },
+    { key: "title", header: "Reminder Title", sortable: true },
+    { key: "notes", header: "Interaction Notes" },
+    {
+      key: "status",
+      header: "Status",
+      align: "center",
+      render: (r) => (
+        <StatusBadge
+          label={r.status}
+          tone={
+            r.status === "completed"
+              ? "success"
+              : r.status === "pending"
+                ? "info"
+                : "neutral"
+          }
+        />
+      ),
+    },
+    {
+      key: "actions",
+      header: "Actions",
+      align: "right",
+      render: (r: any) => {
+        const editReq = getRequestStatus(r.id, "edit");
+        const delReq = getRequestStatus(r.id, "delete");
+
+        return (
+          <div className="flex justify-end gap-2 items-center text-xs">
+            {canWriteDirect || editReq?.status === "approved" ? (
+              <button
+                onClick={() => handleEdit(r)}
+                className="rounded px-2.5 py-1.5 bg-primary/15 hover:bg-primary/25 text-primary transition-colors font-semibold cursor-pointer"
+                title={editReq?.status === "approved" ? "Approved by Admin" : "Edit"}
+              >
+                Edit {editReq?.status === "approved" && "✅"}
+              </button>
+            ) : editReq?.status === "pending" ? (
+              <span className="text-muted-foreground italic font-medium px-2">Edit Pending...</span>
+            ) : (
+              <button
+                onClick={() => handleOpenReqModal(r, "edit")}
+                className="rounded px-2.5 py-1.5 border border-input hover:bg-secondary text-muted-foreground transition-colors font-medium cursor-pointer"
+              >
+                Req Edit
+              </button>
+            )}
+
+            {canDeleteDirect ? (
+              <button
+                onClick={() => executeDelete(r.id)}
+                className="rounded p-1.5 hover:bg-secondary text-destructive transition-colors cursor-pointer"
+                title="Delete"
+              >
+                <Trash2 className="h-4 w-4" />
+              </button>
+            ) : delReq?.status === "approved" ? (
+              <button
+                onClick={() => executeDelete(r.id, delReq.id)}
+                className="rounded px-2.5 py-1.5 bg-destructive/15 hover:bg-destructive/25 text-destructive transition-colors font-semibold cursor-pointer"
+                title="Approved by Admin"
+              >
+                Delete Now ✅
+              </button>
+            ) : delReq?.status === "pending" ? (
+              <span className="text-muted-foreground italic font-medium px-2">Delete Pending...</span>
+            ) : (
+              <button
+                onClick={() => handleOpenReqModal(r, "delete")}
+                className="rounded px-2.5 py-1.5 border border-input hover:bg-secondary text-destructive/80 hover:text-destructive transition-colors font-medium cursor-pointer"
+              >
+                Req Del
+              </button>
+            )}
+          </div>
+        );
+      },
+    },
+  ];
+
   return (
-    <Stub title="Follow Ups" subtitle="Schedule and track client follow-up reminders" icon={Bell} />
+    <div className="space-y-6">
+      <PageHeader
+        title="Client Follow-up Reminders"
+        subtitle="Schedule pitches, payments reminders, and log customer feedback history"
+        action={
+          <button
+            onClick={() => {
+              setEditId(null);
+              setForm({
+                customer_id: "",
+                title: "",
+                notes: "",
+                scheduled_at: new Date(Date.now() + 24 * 3600 * 1000).toISOString().slice(0, 16),
+                status: "pending",
+              });
+              setShowForm(!showForm);
+            }}
+            className="inline-flex items-center gap-1.5 rounded-lg bg-primary px-4 py-2 text-sm font-semibold text-primary-foreground shadow-soft hover:bg-primary/90 cursor-pointer"
+          >
+            <Plus className="h-4 w-4" /> {showForm ? "View All Reminders" : "Schedule Follow-up"}
+          </button>
+        }
+      />
+
+      {showForm ? (
+        <Panel title={editId ? "Edit Scheduled Interaction" : "Schedule New Interaction Reminder"}>
+          <form onSubmit={onSubmit} className="grid gap-4 p-6 sm:grid-cols-2">
+            <div className="space-y-1.5">
+              <label className="text-sm font-medium">Select Customer *</label>
+              <select
+                value={form.customer_id}
+                onChange={(e) => setForm({ ...form, customer_id: e.target.value })}
+                required
+                className="w-full rounded-lg border border-input bg-card px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-primary/20"
+              >
+                <option value="">-- Choose Client --</option>
+                {customers.map((c) => (
+                  <option key={c.id} value={c.id}>
+                    {c.name} {c.company ? `(${c.company})` : ""}
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            <div className="space-y-1.5">
+              <label className="text-sm font-medium">Interaction / Topic Title *</label>
+              <input
+                value={form.title}
+                onChange={(e) => setForm({ ...form, title: e.target.value })}
+                required
+                placeholder="e.g. Discuss bulk order pricing or Payment collection reminder"
+                className="w-full rounded-lg border border-input bg-card px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-primary/20"
+              />
+            </div>
+
+            <div className="space-y-1.5">
+              <label className="text-sm font-medium">Scheduled Date & Time *</label>
+              <input
+                type="datetime-local"
+                value={form.scheduled_at}
+                onChange={(e) => setForm({ ...form, scheduled_at: e.target.value })}
+                required
+                className="w-full rounded-lg border border-input bg-card px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-primary/20"
+              />
+            </div>
+
+            <div className="space-y-1.5">
+              <label className="text-sm font-medium">Reminder Status *</label>
+              <select
+                value={form.status}
+                onChange={(e) => setForm({ ...form, status: e.target.value as any })}
+                className="w-full rounded-lg border border-input bg-card px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-primary/20"
+              >
+                <option value="pending">Pending Action</option>
+                <option value="completed">Completed / Done</option>
+                <option value="cancelled">Cancelled</option>
+              </select>
+            </div>
+
+            <div className="space-y-1.5 sm:col-span-2">
+              <label className="text-sm font-medium">Notes / Discussion Details</label>
+              <textarea
+                value={form.notes}
+                onChange={(e) => setForm({ ...form, notes: e.target.value })}
+                placeholder="Explain the background context or customer feedback details..."
+                className="w-full rounded-lg border border-input bg-card px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-primary/20 h-24"
+              />
+            </div>
+
+            <div className="flex gap-3 sm:col-span-2 pt-2">
+              <button
+                type="submit"
+                className="rounded-lg bg-primary px-4 py-2.5 text-sm font-semibold text-primary-foreground hover:bg-primary/90 cursor-pointer"
+              >
+                {editId ? "Update Reminder" : "Schedule Reminder"}
+              </button>
+              <button
+                type="button"
+                onClick={() => setShowForm(false)}
+                className="rounded-lg border border-input px-4 py-2.5 text-sm font-semibold hover:bg-secondary cursor-pointer"
+              >
+                Cancel
+              </button>
+            </div>
+          </form>
+        </Panel>
+      ) : (
+        <>
+          <div className="grid gap-4 sm:grid-cols-3">
+            <StatCard
+              label="Pending Follow-ups"
+              value={String(data.filter((f) => f.status === "pending").length)}
+              icon={Bell}
+              tone="info"
+            />
+            <StatCard
+              label="Completed Interactions"
+              value={String(data.filter((f) => f.status === "completed").length)}
+              icon={ShieldCheck}
+              tone="primary"
+            />
+            <StatCard
+              label="Total Reminders"
+              value={String(data.length)}
+              icon={ClipboardList}
+              tone="neutral"
+            />
+          </div>
+
+          {loading ? (
+            <div className="flex h-32 items-center justify-center rounded-xl border border-dashed border-border bg-card/60">
+              <p className="text-sm text-muted-foreground animate-pulse font-medium">
+                Querying scheduled reminders...
+              </p>
+            </div>
+          ) : (
+            <DataTable columns={columns} data={data} />
+          )}
+        </>
+      )}
+
+      {/* Change Request Modal */}
+      {showReqModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-background/80 backdrop-blur-sm">
+          <Panel title={`Request ${reqType.toUpperCase()} Permission`} className="w-full max-w-md shadow-lg border">
+            <form onSubmit={submitChangeRequest} className="p-6 space-y-4">
+              <p className="text-sm text-muted-foreground">
+                You do not have direct permission to perform this {reqType} operation. Explain your reason to send an authorization request to the Admin.
+              </p>
+              <div className="space-y-1.5">
+                <label className="text-sm font-medium">Justification Reason *</label>
+                <textarea
+                  required
+                  value={reqReason}
+                  onChange={(e) => setReqReason(e.target.value)}
+                  placeholder="e.g. Customer rescheduled the call, need to update time"
+                  className="w-full rounded-lg border border-input bg-card px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-primary/20 h-24"
+                />
+              </div>
+              <div className="flex justify-end gap-2">
+                <button
+                  type="button"
+                  onClick={() => setShowReqModal(false)}
+                  className="rounded-lg border border-input px-4 py-2 text-sm font-semibold hover:bg-secondary cursor-pointer"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  className="rounded-lg bg-primary px-4 py-2 text-sm font-semibold text-primary-foreground hover:bg-primary/90 cursor-pointer"
+                >
+                  Submit Request
+                </button>
+              </div>
+            </form>
+          </Panel>
+        </div>
+      )}
+    </div>
   );
 }
 
@@ -180,12 +1126,181 @@ function PurchaseReportsModule() {
 }
 
 function OutstandingReportsModule() {
+  const [receivables, setReceivables] = useState<any[]>([]);
+  const [payables, setPayables] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [tab, setTab] = useState<"receivables" | "payables">("receivables");
+
+  const loadData = async () => {
+    setLoading(true);
+    try {
+      // 1. Fetch unpaid sales orders (Receivables)
+      const { data: sales, error: salesErr } = await supabase
+        .from("sales_orders")
+        .select("*, customers(name, company)")
+        .in("status", ["pending", "processing", "dispatched"])
+        .order("created_at", { ascending: false });
+
+      if (salesErr) throw salesErr;
+      setReceivables(sales || []);
+
+      // 2. Fetch pending expenses (Payables)
+      const { data: exps, error: expsErr } = await supabase
+        .from("expenses")
+        .select("*")
+        .eq("status", "Pending")
+        .order("expense_date", { ascending: false });
+
+      if (expsErr) throw expsErr;
+      setPayables(exps || []);
+    } catch (err: any) {
+      console.error("Failed to load outstanding reports:", err.message);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    loadData();
+  }, []);
+
+  const totalReceivables = receivables.reduce((acc, r) => acc + parseFloat(r.grand_total || 0), 0);
+  const totalPayables = payables.reduce((acc, p) => acc + parseFloat(p.amount || 0), 0);
+  const netOutstanding = totalReceivables - totalPayables;
+
+  const inr = (n: number) => "₹" + Number(n).toLocaleString("en-IN");
+
+  const receivableColumns: Column<any>[] = [
+    {
+      key: "order_number",
+      header: "Order Number",
+      render: (r) => <span className="font-semibold">{r.order_number}</span>,
+    },
+    {
+      key: "customer",
+      header: "Client Customer",
+      render: (r) => (
+        <div>
+          <p className="font-semibold text-foreground">{r.customers?.name || "Cash Customer"}</p>
+          <p className="text-xs text-muted-foreground">{r.customers?.company || "Direct"}</p>
+        </div>
+      ),
+    },
+    {
+      key: "order_date",
+      header: "Date Posted",
+      render: (r) => new Date(r.created_at).toLocaleDateString("en-IN"),
+    },
+    {
+      key: "days",
+      header: "Days Pending",
+      render: (r) => {
+        const diffTime = Math.abs(Date.now() - new Date(r.created_at).getTime());
+        const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+        return (
+          <span className={diffDays > 30 ? "text-destructive font-semibold animate-pulse" : "text-muted-foreground"}>
+            {diffDays} days
+          </span>
+        );
+      },
+    },
+    {
+      key: "grand_total",
+      header: "Due Amount",
+      align: "right",
+      render: (r) => <span className="font-bold">{inr(r.grand_total)}</span>,
+    },
+    {
+      key: "status",
+      header: "Workflow Status",
+      align: "center",
+      render: (r) => <StatusBadge label={r.status} tone="info" />,
+    },
+  ];
+
+  const payableColumns: Column<any>[] = [
+    {
+      key: "expense_date",
+      header: "Bill Date",
+      render: (r) => new Date(r.expense_date).toLocaleDateString("en-IN"),
+    },
+    {
+      key: "category",
+      header: "Expense Category",
+      render: (r) => <span className="font-semibold">{r.category}</span>,
+    },
+    { key: "paid_to", header: "Supplier / Payee" },
+    { key: "description", header: "Narration / Notes" },
+    {
+      key: "amount",
+      header: "Due Amount",
+      align: "right",
+      render: (r) => <span className="font-bold text-destructive">{inr(r.amount)}</span>,
+    },
+    {
+      key: "status",
+      header: "Payment Status",
+      align: "center",
+      render: (r) => <StatusBadge label={r.status} tone="neutral" />,
+    },
+  ];
+
   return (
-    <Stub
-      title="Outstanding Reports"
-      subtitle="Pending receivables and payables summary"
-      icon={Receipt}
-    />
+    <div className="space-y-6">
+      <PageHeader
+        title="Outstanding Balances & Ledgers"
+        subtitle="Analyze unpaid client orders (receivables) and pending business bills (payables)"
+      />
+
+      <div className="grid gap-4 sm:grid-cols-3">
+        <StatCard
+          label="Total Accounts Receivable"
+          value={inr(totalReceivables)}
+          icon={TrendingUp}
+          tone="primary"
+        />
+        <StatCard
+          label="Total Accounts Payable"
+          value={inr(totalPayables)}
+          icon={ShoppingCart}
+          tone="destructive"
+        />
+        <StatCard
+          label="Net Projected Balance"
+          value={inr(netOutstanding)}
+          icon={Wallet}
+          tone={netOutstanding >= 0 ? "primary" : "destructive"}
+        />
+      </div>
+
+      <div className="mb-4 flex gap-1 rounded-lg border border-border bg-card p-1">
+        {(["receivables", "payables"] as const).map((t) => (
+          <button
+            key={t}
+            onClick={() => setTab(t)}
+            className={`flex-1 rounded-md px-3 py-2 text-sm font-medium capitalize transition-colors cursor-pointer ${
+              tab === t
+                ? "bg-primary text-primary-foreground font-semibold"
+                : "text-muted-foreground hover:bg-secondary"
+            }`}
+          >
+            {t === "receivables" ? "Accounts Receivable (Client Dues)" : "Accounts Payable (Pending Vendor Bills)"}
+          </button>
+        ))}
+      </div>
+
+      {loading ? (
+        <div className="flex h-32 items-center justify-center rounded-xl border border-dashed border-border bg-card/60">
+          <p className="text-sm text-muted-foreground animate-pulse font-medium">
+            Calculating outstanding balances...
+          </p>
+        </div>
+      ) : tab === "receivables" ? (
+        <DataTable columns={receivableColumns} data={receivables} />
+      ) : (
+        <DataTable columns={payableColumns} data={payables} />
+      )}
+    </div>
   );
 }
 

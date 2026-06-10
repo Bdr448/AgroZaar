@@ -37,6 +37,64 @@ import {
 
 const inr = (n: number) => `₹${Number(n).toLocaleString("en-IN")}`;
 
+interface ChangeRequestModalProps {
+  isOpen: boolean;
+  onClose: () => void;
+  onSubmit: (e: React.FormEvent) => void;
+  type: "edit" | "delete";
+  reason: string;
+  setReason: (val: string) => void;
+  module: string;
+}
+
+function ChangeRequestModal({
+  isOpen,
+  onClose,
+  onSubmit,
+  type,
+  reason,
+  setReason,
+  module,
+}: ChangeRequestModalProps) {
+  if (!isOpen) return null;
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-background/80 backdrop-blur-sm">
+      <Panel title={`Request ${type.toUpperCase()} Authorization`} className="w-full max-w-md shadow-lg border">
+        <form onSubmit={onSubmit} className="p-6 space-y-4">
+          <p className="text-sm text-muted-foreground">
+            You do not have direct permission to {type} this {module} record. Explain your reason below to request admin approval.
+          </p>
+          <div className="space-y-1.5">
+            <label className="text-sm font-medium">Justification Reason *</label>
+            <textarea
+              required
+              value={reason}
+              onChange={(e) => setReason(e.target.value)}
+              placeholder="e.g. Typo correction, incorrect client details, client requested removal"
+              className="w-full rounded-lg border border-input bg-card px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-primary/20 h-24"
+            />
+          </div>
+          <div className="flex justify-end gap-2">
+            <button
+              type="button"
+              onClick={onClose}
+              className="rounded-lg border border-input px-4 py-2 text-sm font-semibold hover:bg-secondary cursor-pointer"
+            >
+              Cancel
+            </button>
+            <button
+              type="submit"
+              className="rounded-lg bg-primary px-4 py-2 text-sm font-semibold text-primary-foreground hover:bg-primary/90 cursor-pointer"
+            >
+              Submit Request
+            </button>
+          </div>
+        </form>
+      </Panel>
+    </div>
+  );
+}
+
 /* ====================================================================
    DEMO SEED DATA HELPER
    ==================================================================== */
@@ -317,22 +375,76 @@ export function CustomersModule() {
   const [editId, setEditId] = useState<string | null>(null);
   const [form, setForm] = useState({ name: "", company: "", email: "", phone: "", gstin: "" });
 
+  const [requests, setRequests] = useState<any[]>([]);
+  const [showReqModal, setShowReqModal] = useState(false);
+  const [reqRecord, setReqRecord] = useState<any>(null);
+  const [reqType, setReqType] = useState<"edit" | "delete">("edit");
+  const [reqReason, setReqReason] = useState("");
+
   const canManage = ["super-admin", "admin", "partner", "sales"].includes(session?.role || "");
+  const isAdmin = ["super-admin", "admin"].includes(session?.role || "");
+  const canEditDirect = isAdmin || ["partner", "sales"].includes(session?.role || "");
+  const canDeleteDirect = isAdmin;
 
   const loadData = async () => {
     setLoading(true);
-    const { data: res } = await supabase
-      .from("customers")
-      .select("*")
-      .eq("is_deleted", false)
-      .order("created_at", { ascending: false });
-    setData(res || []);
-    setLoading(false);
+    try {
+      const { data: res } = await supabase
+        .from("customers")
+        .select("*")
+        .eq("is_deleted", false)
+        .order("created_at", { ascending: false });
+      setData(res || []);
+
+      const { data: reqs } = await supabase
+        .from("change_requests")
+        .select("*")
+        .eq("module_name", "Customers");
+      setRequests(reqs || []);
+    } catch (err: any) {
+      console.error(err);
+    } finally {
+      setLoading(false);
+    }
   };
 
   useEffect(() => {
     loadData();
   }, []);
+
+  const getRequestStatus = (recordId: string, type: "edit" | "delete") => {
+    return requests.find((r) => r.record_id === recordId && r.action_type === type);
+  };
+
+  const handleOpenReqModal = (record: any, type: "edit" | "delete") => {
+    setReqRecord(record);
+    setReqType(type);
+    setReqReason("");
+    setShowReqModal(true);
+  };
+
+  const submitChangeRequest = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!reqReason) return toast.error("Reason is required");
+
+    const displayName = reqRecord.name + (reqRecord.company ? ` (${reqRecord.company})` : "");
+    const { error } = await supabase.from("change_requests").insert([
+      {
+        requester_id: session?.id,
+        module_name: "Customers",
+        record_id: reqRecord.id,
+        record_display_name: displayName,
+        action_type: reqType,
+        reason: reqReason,
+        status: "pending",
+      },
+    ]);
+
+    if (error) return toast.error(error.message);
+    toast.success("Modification request sent to Admin.");
+    setShowReqModal(false);
+    loadData();
+  };
 
   const onSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -344,7 +456,13 @@ export function CustomersModule() {
         .update(form)
         .eq("id", editId);
       if (error) return toast.error(error.message);
+
+      const req = getRequestStatus(editId, "edit");
+      if (req) {
+        await supabase.from("change_requests").delete().eq("id", req.id);
+      }
       toast.success("Customer updated successfully");
+      setEditId(null);
     } else {
       const { error } = await supabase.from("customers").insert([form]);
       if (error) return toast.error(error.message);
@@ -352,7 +470,6 @@ export function CustomersModule() {
     }
     
     setForm({ name: "", company: "", email: "", phone: "", gstin: "" });
-    setEditId(null);
     setShowForm(false);
     loadData();
   };
@@ -369,13 +486,17 @@ export function CustomersModule() {
     setShowForm(true);
   };
 
-  const handleDelete = async (id: string) => {
+  const handleDelete = async (id: string, reqId?: string) => {
     if (!window.confirm("Are you sure you want to delete this customer?")) return;
     const { error } = await supabase
       .from("customers")
       .update({ is_deleted: true })
       .eq("id", id);
     if (error) return toast.error(error.message);
+
+    if (reqId) {
+      await supabase.from("change_requests").delete().eq("id", reqId);
+    }
     toast.success("Customer deleted successfully (Soft Deleted)");
     loadData();
   };
@@ -386,33 +507,65 @@ export function CustomersModule() {
     { key: "email", header: "Email" },
     { key: "phone", header: "Phone" },
     { key: "gstin", header: "GSTIN" },
-    ...(canManage
-      ? [
-          {
-            key: "actions",
-            header: "Actions",
-            align: "right" as const,
-            render: (r: any) => (
-              <div className="flex justify-end gap-2">
-                <button
-                  onClick={() => handleEdit(r)}
-                  className="rounded p-1 hover:bg-secondary text-primary transition-colors"
-                  title="Edit"
-                >
-                  <Pencil className="h-4 w-4" />
-                </button>
-                <button
-                  onClick={() => handleDelete(r.id)}
-                  className="rounded p-1 hover:bg-secondary text-destructive transition-colors"
-                  title="Delete (Soft)"
-                >
-                  <Trash2 className="h-4 w-4" />
-                </button>
-              </div>
-            ),
-          },
-        ]
-      : []),
+    {
+      key: "actions",
+      header: "Actions",
+      align: "right" as const,
+      render: (r: any) => {
+        const editReq = getRequestStatus(r.id, "edit");
+        const delReq = getRequestStatus(r.id, "delete");
+
+        return (
+          <div className="flex justify-end gap-2 items-center text-xs">
+            {canEditDirect || editReq?.status === "approved" ? (
+              <button
+                onClick={() => handleEdit(r)}
+                className="rounded p-1.5 hover:bg-secondary text-primary transition-colors cursor-pointer"
+                title={editReq?.status === "approved" ? "Approved by Admin" : "Edit"}
+              >
+                <Pencil className="h-4 w-4" /> {editReq?.status === "approved" && "✅"}
+              </button>
+            ) : editReq?.status === "pending" ? (
+              <span className="text-muted-foreground italic font-medium px-2">Edit Pending...</span>
+            ) : (
+              <button
+                onClick={() => handleOpenReqModal(r, "edit")}
+                className="rounded px-2 py-1 border border-input hover:bg-secondary text-muted-foreground transition-colors font-medium cursor-pointer"
+              >
+                Req Edit
+              </button>
+            )}
+
+            {canDeleteDirect ? (
+              <button
+                onClick={() => handleDelete(r.id)}
+                className="rounded p-1.5 hover:bg-secondary text-destructive transition-colors cursor-pointer"
+                title="Delete"
+              >
+                <Trash2 className="h-4 w-4" />
+              </button>
+            ) : delReq?.status === "approved" ? (
+              <button
+                onClick={() => handleDelete(r.id, delReq.id)}
+                className="rounded px-2 py-1 bg-destructive/10 hover:bg-destructive/20 text-destructive transition-colors font-semibold cursor-pointer"
+                title="Approved by Admin"
+              >
+                Delete Now ✅
+              </button>
+            ) : delReq?.status === "pending" ? (
+              <span className="text-muted-foreground italic font-medium px-2">Delete Pending...</span>
+            ) : (
+              <button
+                onClick={() => handleOpenReqModal(r, "delete")}
+                className="rounded px-2 py-1 border border-input hover:bg-secondary text-destructive/80 hover:text-destructive transition-colors font-medium cursor-pointer"
+              >
+                Req Del
+              </button>
+            )}
+          </div>
+        );
+      },
+    },
   ];
 
   return (
@@ -428,7 +581,7 @@ export function CustomersModule() {
                 setForm({ name: "", company: "", email: "", phone: "", gstin: "" });
                 setShowForm(!showForm);
               }}
-              className="inline-flex items-center gap-1.5 rounded-lg bg-primary px-4 py-2 text-sm font-semibold text-primary-foreground shadow-soft hover:bg-primary/90"
+              className="inline-flex items-center gap-1.5 rounded-lg bg-primary px-4 py-2 text-sm font-semibold text-primary-foreground shadow-soft hover:bg-primary/90 cursor-pointer"
             >
               <Plus className="h-4 w-4" /> {showForm ? "View Directory" : "Add Customer"}
             </button>
@@ -488,7 +641,7 @@ export function CustomersModule() {
             </div>
             <button
               type="submit"
-              className="w-full rounded-lg bg-primary py-2.5 text-sm font-semibold text-primary-foreground sm:col-span-2"
+              className="w-full rounded-lg bg-primary py-2.5 text-sm font-semibold text-primary-foreground sm:col-span-2 cursor-pointer"
             >
               {editId ? "Update Customer" : "Save Customer"}
             </button>
@@ -519,6 +672,16 @@ export function CustomersModule() {
           <DataTable columns={columns} data={data} emptyLabel="No customers registered yet." />
         </>
       )}
+
+      <ChangeRequestModal
+        isOpen={showReqModal}
+        onClose={() => setShowReqModal(false)}
+        onSubmit={submitChangeRequest}
+        type={reqType}
+        reason={reqReason}
+        setReason={setReqReason}
+        module="Customers"
+      />
     </div>
   );
 }
@@ -531,22 +694,76 @@ export function SuppliersModule() {
   const [editId, setEditId] = useState<string | null>(null);
   const [form, setForm] = useState({ name: "", company: "", email: "", phone: "", gstin: "" });
 
+  const [requests, setRequests] = useState<any[]>([]);
+  const [showReqModal, setShowReqModal] = useState(false);
+  const [reqRecord, setReqRecord] = useState<any>(null);
+  const [reqType, setReqType] = useState<"edit" | "delete">("edit");
+  const [reqReason, setReqReason] = useState("");
+
   const canManage = ["super-admin", "admin", "partner", "warehouse", "supervisor"].includes(session?.role || "");
+  const isAdmin = ["super-admin", "admin"].includes(session?.role || "");
+  const canEditDirect = isAdmin || ["partner", "warehouse", "supervisor"].includes(session?.role || "");
+  const canDeleteDirect = isAdmin;
 
   const loadData = async () => {
     setLoading(true);
-    const { data: res } = await supabase
-      .from("suppliers")
-      .select("*")
-      .eq("is_deleted", false)
-      .order("created_at", { ascending: false });
-    setData(res || []);
-    setLoading(false);
+    try {
+      const { data: res } = await supabase
+        .from("suppliers")
+        .select("*")
+        .eq("is_deleted", false)
+        .order("created_at", { ascending: false });
+      setData(res || []);
+
+      const { data: reqs } = await supabase
+        .from("change_requests")
+        .select("*")
+        .eq("module_name", "Suppliers");
+      setRequests(reqs || []);
+    } catch (err: any) {
+      console.error(err);
+    } finally {
+      setLoading(false);
+    }
   };
 
   useEffect(() => {
     loadData();
   }, []);
+
+  const getRequestStatus = (recordId: string, type: "edit" | "delete") => {
+    return requests.find((r) => r.record_id === recordId && r.action_type === type);
+  };
+
+  const handleOpenReqModal = (record: any, type: "edit" | "delete") => {
+    setReqRecord(record);
+    setReqType(type);
+    setReqReason("");
+    setShowReqModal(true);
+  };
+
+  const submitChangeRequest = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!reqReason) return toast.error("Reason is required");
+
+    const displayName = reqRecord.name + (reqRecord.company ? ` (${reqRecord.company})` : "");
+    const { error } = await supabase.from("change_requests").insert([
+      {
+        requester_id: session?.id,
+        module_name: "Suppliers",
+        record_id: reqRecord.id,
+        record_display_name: displayName,
+        action_type: reqType,
+        reason: reqReason,
+        status: "pending",
+      },
+    ]);
+
+    if (error) return toast.error(error.message);
+    toast.success("Modification request sent to Admin.");
+    setShowReqModal(false);
+    loadData();
+  };
 
   const onSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -558,7 +775,13 @@ export function SuppliersModule() {
         .update(form)
         .eq("id", editId);
       if (error) return toast.error(error.message);
+
+      const req = getRequestStatus(editId, "edit");
+      if (req) {
+        await supabase.from("change_requests").delete().eq("id", req.id);
+      }
       toast.success("Supplier updated successfully");
+      setEditId(null);
     } else {
       const { error } = await supabase.from("suppliers").insert([form]);
       if (error) return toast.error(error.message);
@@ -566,7 +789,6 @@ export function SuppliersModule() {
     }
     
     setForm({ name: "", company: "", email: "", phone: "", gstin: "" });
-    setEditId(null);
     setShowForm(false);
     loadData();
   };
@@ -583,13 +805,17 @@ export function SuppliersModule() {
     setShowForm(true);
   };
 
-  const handleDelete = async (id: string) => {
+  const handleDelete = async (id: string, reqId?: string) => {
     if (!window.confirm("Are you sure you want to delete this supplier?")) return;
     const { error } = await supabase
       .from("suppliers")
       .update({ is_deleted: true })
       .eq("id", id);
     if (error) return toast.error(error.message);
+
+    if (reqId) {
+      await supabase.from("change_requests").delete().eq("id", reqId);
+    }
     toast.success("Supplier deleted successfully (Soft Deleted)");
     loadData();
   };
@@ -600,33 +826,65 @@ export function SuppliersModule() {
     { key: "email", header: "Email" },
     { key: "phone", header: "Phone" },
     { key: "gstin", header: "GSTIN" },
-    ...(canManage
-      ? [
-          {
-            key: "actions",
-            header: "Actions",
-            align: "right" as const,
-            render: (r: any) => (
-              <div className="flex justify-end gap-2">
-                <button
-                  onClick={() => handleEdit(r)}
-                  className="rounded p-1 hover:bg-secondary text-primary transition-colors"
-                  title="Edit"
-                >
-                  <Pencil className="h-4 w-4" />
-                </button>
-                <button
-                  onClick={() => handleDelete(r.id)}
-                  className="rounded p-1 hover:bg-secondary text-destructive transition-colors"
-                  title="Delete (Soft)"
-                >
-                  <Trash2 className="h-4 w-4" />
-                </button>
-              </div>
-            ),
-          },
-        ]
-      : []),
+    {
+      key: "actions",
+      header: "Actions",
+      align: "right" as const,
+      render: (r: any) => {
+        const editReq = getRequestStatus(r.id, "edit");
+        const delReq = getRequestStatus(r.id, "delete");
+
+        return (
+          <div className="flex justify-end gap-2 items-center text-xs">
+            {canEditDirect || editReq?.status === "approved" ? (
+              <button
+                onClick={() => handleEdit(r)}
+                className="rounded p-1.5 hover:bg-secondary text-primary transition-colors cursor-pointer"
+                title={editReq?.status === "approved" ? "Approved by Admin" : "Edit"}
+              >
+                <Pencil className="h-4 w-4" /> {editReq?.status === "approved" && "✅"}
+              </button>
+            ) : editReq?.status === "pending" ? (
+              <span className="text-muted-foreground italic font-medium px-2">Edit Pending...</span>
+            ) : (
+              <button
+                onClick={() => handleOpenReqModal(r, "edit")}
+                className="rounded px-2 py-1 border border-input hover:bg-secondary text-muted-foreground transition-colors font-medium cursor-pointer"
+              >
+                Req Edit
+              </button>
+            )}
+
+            {canDeleteDirect ? (
+              <button
+                onClick={() => handleDelete(r.id)}
+                className="rounded p-1.5 hover:bg-secondary text-destructive transition-colors cursor-pointer"
+                title="Delete"
+              >
+                <Trash2 className="h-4 w-4" />
+              </button>
+            ) : delReq?.status === "approved" ? (
+              <button
+                onClick={() => handleDelete(r.id, delReq.id)}
+                className="rounded px-2 py-1 bg-destructive/10 hover:bg-destructive/20 text-destructive transition-colors font-semibold cursor-pointer"
+                title="Approved by Admin"
+              >
+                Delete Now ✅
+              </button>
+            ) : delReq?.status === "pending" ? (
+              <span className="text-muted-foreground italic font-medium px-2">Delete Pending...</span>
+            ) : (
+              <button
+                onClick={() => handleOpenReqModal(r, "delete")}
+                className="rounded px-2 py-1 border border-input hover:bg-secondary text-destructive/80 hover:text-destructive transition-colors font-medium cursor-pointer"
+              >
+                Req Del
+              </button>
+            )}
+          </div>
+        );
+      },
+    },
   ];
 
   return (
@@ -642,7 +900,7 @@ export function SuppliersModule() {
                 setForm({ name: "", company: "", email: "", phone: "", gstin: "" });
                 setShowForm(!showForm);
               }}
-              className="inline-flex items-center gap-1.5 rounded-lg bg-primary px-4 py-2 text-sm font-semibold text-primary-foreground shadow-soft hover:bg-primary/90"
+              className="inline-flex items-center gap-1.5 rounded-lg bg-primary px-4 py-2 text-sm font-semibold text-primary-foreground shadow-soft hover:bg-primary/90 cursor-pointer"
             >
               <Plus className="h-4 w-4" /> {showForm ? "View Directory" : "Add Supplier"}
             </button>
@@ -702,7 +960,7 @@ export function SuppliersModule() {
             </div>
             <button
               type="submit"
-              className="w-full rounded-lg bg-primary py-2.5 text-sm font-semibold text-primary-foreground sm:col-span-2"
+              className="w-full rounded-lg bg-primary py-2.5 text-sm font-semibold text-primary-foreground sm:col-span-2 cursor-pointer"
             >
               {editId ? "Update Supplier" : "Save Supplier"}
             </button>
@@ -733,6 +991,16 @@ export function SuppliersModule() {
           <DataTable columns={columns} data={data} emptyLabel="No suppliers registered yet." />
         </>
       )}
+
+      <ChangeRequestModal
+        isOpen={showReqModal}
+        onClose={() => setShowReqModal(false)}
+        onSubmit={submitChangeRequest}
+        type={reqType}
+        reason={reqReason}
+        setReason={setReqReason}
+        module="Suppliers"
+      />
     </div>
   );
 }
@@ -755,19 +1023,72 @@ export function ProductsModule() {
     retailer_price: 0,
   });
 
+  const [requests, setRequests] = useState<any[]>([]);
+  const [showReqModal, setShowReqModal] = useState(false);
+  const [reqRecord, setReqRecord] = useState<any>(null);
+  const [reqType, setReqType] = useState<"edit" | "delete">("edit");
+  const [reqReason, setReqReason] = useState("");
+
   const canManage = ["super-admin", "admin", "supervisor"].includes(session?.role || "");
+  const isAdmin = ["super-admin", "admin"].includes(session?.role || "");
+  const canEditDirect = isAdmin || ["supervisor"].includes(session?.role || "");
+  const canDeleteDirect = isAdmin;
 
   const loadData = async () => {
-    const { data: products } = await supabase
-      .from("products")
-      .select("*, product_prices(*)")
-      .eq("is_deleted", false);
-    setData(products || []);
+    try {
+      const { data: products } = await supabase
+        .from("products")
+        .select("*, product_prices(*)")
+        .eq("is_deleted", false);
+      setData(products || []);
+
+      const { data: reqs } = await supabase
+        .from("change_requests")
+        .select("*")
+        .eq("module_name", "Products");
+      setRequests(reqs || []);
+    } catch (err: any) {
+      console.error(err);
+    }
   };
 
   useEffect(() => {
     loadData();
   }, []);
+
+  const getRequestStatus = (recordId: string, type: "edit" | "delete") => {
+    return requests.find((r) => r.record_id === recordId && r.action_type === type);
+  };
+
+  const handleOpenReqModal = (record: any, type: "edit" | "delete") => {
+    setReqRecord(record);
+    setReqType(type);
+    setReqReason("");
+    setShowReqModal(true);
+  };
+
+  const submitChangeRequest = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!reqReason) return toast.error("Reason is required");
+
+    const displayName = reqRecord.name + ` (${reqRecord.sku})`;
+    const { error } = await supabase.from("change_requests").insert([
+      {
+        requester_id: session?.id,
+        module_name: "Products",
+        record_id: reqRecord.id,
+        record_display_name: displayName,
+        action_type: reqType,
+        reason: reqReason,
+        status: "pending",
+      },
+    ]);
+
+    if (error) return toast.error(error.message);
+    toast.success("Modification request sent to Admin.");
+    setShowReqModal(false);
+    loadData();
+  };
 
   const onSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -800,7 +1121,12 @@ export function ProductsModule() {
         { onConflict: "product_id,tier" }
       );
 
+      const req = getRequestStatus(editId, "edit");
+      if (req) {
+        await supabase.from("change_requests").delete().eq("id", req.id);
+      }
       toast.success("Product and pricing tiers updated!");
+      setEditId(null);
     } else {
       const { data: p, error } = await supabase
         .from("products")
@@ -837,7 +1163,6 @@ export function ProductsModule() {
       distributor_price: 0,
       retailer_price: 0,
     });
-    setEditId(null);
     setShowForm(false);
     loadData();
   };
@@ -859,13 +1184,17 @@ export function ProductsModule() {
     setShowForm(true);
   };
 
-  const handleDelete = async (id: string) => {
+  const handleDelete = async (id: string, reqId?: string) => {
     if (!window.confirm("Are you sure you want to delete this product SKU?")) return;
     const { error } = await supabase
       .from("products")
       .update({ is_deleted: true })
       .eq("id", id);
     if (error) return toast.error(error.message);
+
+    if (reqId) {
+      await supabase.from("change_requests").delete().eq("id", reqId);
+    }
     toast.success("Product deleted successfully (Soft Deleted)");
     loadData();
   };
@@ -882,33 +1211,65 @@ export function ProductsModule() {
     { key: "standard", header: "Std Price", render: (r) => getPrice(r, "standard") },
     { key: "distributor", header: "Dist Price", render: (r) => getPrice(r, "distributor") },
     { key: "retailer", header: "Retail Price", render: (r) => getPrice(r, "retailer") },
-    ...(canManage
-      ? [
-          {
-            key: "actions",
-            header: "Actions",
-            align: "right" as const,
-            render: (r: any) => (
-              <div className="flex justify-end gap-2">
-                <button
-                  onClick={() => handleEdit(r)}
-                  className="rounded p-1 hover:bg-secondary text-primary transition-colors"
-                  title="Edit"
-                >
-                  <Pencil className="h-4 w-4" />
-                </button>
-                <button
-                  onClick={() => handleDelete(r.id)}
-                  className="rounded p-1 hover:bg-secondary text-destructive transition-colors"
-                  title="Delete (Soft)"
-                >
-                  <Trash2 className="h-4 w-4" />
-                </button>
-              </div>
-            ),
-          },
-        ]
-      : []),
+    {
+      key: "actions",
+      header: "Actions",
+      align: "right" as const,
+      render: (r: any) => {
+        const editReq = getRequestStatus(r.id, "edit");
+        const delReq = getRequestStatus(r.id, "delete");
+
+        return (
+          <div className="flex justify-end gap-2 items-center text-xs">
+            {canEditDirect || editReq?.status === "approved" ? (
+              <button
+                onClick={() => handleEdit(r)}
+                className="rounded p-1.5 hover:bg-secondary text-primary transition-colors cursor-pointer"
+                title={editReq?.status === "approved" ? "Approved by Admin" : "Edit"}
+              >
+                <Pencil className="h-4 w-4" /> {editReq?.status === "approved" && "✅"}
+              </button>
+            ) : editReq?.status === "pending" ? (
+              <span className="text-muted-foreground italic font-medium px-2">Edit Pending...</span>
+            ) : (
+              <button
+                onClick={() => handleOpenReqModal(r, "edit")}
+                className="rounded px-2 py-1 border border-input hover:bg-secondary text-muted-foreground transition-colors font-medium cursor-pointer"
+              >
+                Req Edit
+              </button>
+            )}
+
+            {canDeleteDirect ? (
+              <button
+                onClick={() => handleDelete(r.id)}
+                className="rounded p-1.5 hover:bg-secondary text-destructive transition-colors cursor-pointer"
+                title="Delete"
+              >
+                <Trash2 className="h-4 w-4" />
+              </button>
+            ) : delReq?.status === "approved" ? (
+              <button
+                onClick={() => handleDelete(r.id, delReq.id)}
+                className="rounded px-2 py-1 bg-destructive/10 hover:bg-destructive/20 text-destructive transition-colors font-semibold cursor-pointer"
+                title="Approved by Admin"
+              >
+                Delete Now ✅
+              </button>
+            ) : delReq?.status === "pending" ? (
+              <span className="text-muted-foreground italic font-medium px-2">Delete Pending...</span>
+            ) : (
+              <button
+                onClick={() => handleOpenReqModal(r, "delete")}
+                className="rounded px-2 py-1 border border-input hover:bg-secondary text-destructive/80 hover:text-destructive transition-colors font-medium cursor-pointer"
+              >
+                Req Del
+              </button>
+            )}
+          </div>
+        );
+      },
+    },
   ];
 
   return (
@@ -932,7 +1293,7 @@ export function ProductsModule() {
                 });
                 setShowForm(!showForm);
               }}
-              className="inline-flex items-center gap-1.5 rounded-lg bg-primary px-4 py-2 text-sm font-semibold text-primary-foreground shadow-soft hover:bg-primary/90"
+              className="inline-flex items-center gap-1.5 rounded-lg bg-primary px-4 py-2 text-sm font-semibold text-primary-foreground shadow-soft hover:bg-primary/90 cursor-pointer"
             >
               <Plus className="h-4 w-4" /> {showForm ? "View Catalog" : "Add Product"}
             </button>
@@ -1013,7 +1374,7 @@ export function ProductsModule() {
             </div>
             <button
               type="submit"
-              className="w-full rounded-lg bg-primary py-2.5 text-sm font-semibold text-primary-foreground sm:col-span-2 mt-2"
+              className="w-full rounded-lg bg-primary py-2.5 text-sm font-semibold text-primary-foreground sm:col-span-2 mt-2 cursor-pointer"
             >
               {editId ? "Update Product SKU & Prices" : "Save Product SKU & Prices"}
             </button>
@@ -1044,6 +1405,16 @@ export function ProductsModule() {
           <DataTable columns={columns} data={data} emptyLabel="No products found." />
         </>
       )}
+
+      <ChangeRequestModal
+        isOpen={showReqModal}
+        onClose={() => setShowReqModal(false)}
+        onSubmit={submitChangeRequest}
+        type={reqType}
+        reason={reqReason}
+        setReason={setReqReason}
+        module="Products"
+      />
     </div>
   );
 }
@@ -1586,15 +1957,27 @@ export function ProductionModule() {
    6. QC MANAGEMENT MODULE
    ==================================================================== */
 export function QcManagementModule() {
+  const session = useSession();
   const [data, setData] = useState<any[]>([]);
   const [batches, setBatches] = useState<any[]>([]);
   const [showForm, setShowForm] = useState(false);
+  const [editId, setEditId] = useState<string | null>(null);
   const [form, setForm] = useState({
     batch_id: "",
     moisture: 5.0,
     aroma: "Premium spice aroma",
     color: "Correct standard color",
     status: "approved",
+  });
+
+  // Requests state and modal state
+  const [requests, setRequests] = useState<any[]>([]);
+  const [showRequestModal, setShowRequestModal] = useState(false);
+  const [requestForm, setRequestForm] = useState({
+    record_id: "",
+    display_name: "",
+    action_type: "edit" as "edit" | "delete",
+    reason: "",
   });
 
   const loadData = async () => {
@@ -1610,27 +1993,110 @@ export function QcManagementModule() {
       .select("id, batch_number")
       .order("created_at", { ascending: false });
     setBatches(bt || []);
+
+    // Load change requests for QC module
+    const { data: reqs } = await supabase
+      .from("change_requests")
+      .select("*")
+      .eq("module_name", "QC");
+    setRequests(reqs || []);
   };
 
   useEffect(() => {
     loadData();
   }, []);
 
+  const getRequestStatus = (recordId: string, type: "edit" | "delete") => {
+    return requests.find((r) => r.record_id === recordId && r.action_type === type);
+  };
+
+  const handleRequestChange = (record: any, type: "edit" | "delete") => {
+    setRequestForm({
+      record_id: record.id,
+      display_name: record.production_batches?.batch_number || "QC Record",
+      action_type: type,
+      reason: "",
+    });
+    setShowRequestModal(true);
+  };
+
+  const submitChangeRequest = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!requestForm.reason) return toast.error("Reason is required");
+
+    const { error } = await supabase.from("change_requests").insert([
+      {
+        requester_id: session?.id,
+        module_name: "QC",
+        record_id: requestForm.record_id,
+        record_display_name: requestForm.display_name,
+        action_type: requestForm.action_type,
+        reason: requestForm.reason,
+        status: "pending",
+      },
+    ]);
+
+    if (error) return toast.error(error.message);
+    toast.success("Modification request sent to Admin.");
+    setShowRequestModal(false);
+    loadData();
+  };
+
+  const executeDelete = async (id: string, reqId: string) => {
+    if (!window.confirm("Are you sure you want to delete this QC record?")) return;
+    const { error } = await supabase.from("qc_tests").delete().eq("id", id);
+    if (error) return toast.error(error.message);
+
+    if (reqId) {
+      await supabase.from("change_requests").delete().eq("id", reqId);
+    }
+    toast.success("QC record deleted successfully.");
+    loadData();
+  };
+
+  const handleEdit = (test: any) => {
+    setForm({
+      batch_id: test.batch_id,
+      moisture: parseFloat(test.moisture),
+      aroma: test.aroma,
+      color: test.color,
+      status: test.status,
+    });
+    setEditId(test.id);
+    setShowForm(true);
+  };
+
   const onSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!form.batch_id || !form.moisture || !form.aroma)
       return toast.error("Moisture and aroma checks are required");
 
-    const { error } = await supabase.from("qc_tests").insert([form]);
-    if (error) return toast.error(error.message);
+    if (editId) {
+      const { error } = await supabase
+        .from("qc_tests")
+        .update(form)
+        .eq("id", editId);
+      if (error) return toast.error(error.message);
 
-    // Update the production batch status to completed/rejected
-    await supabase
-      .from("production_batches")
-      .update({ status: form.status === "approved" ? "completed" : "cancelled" })
-      .eq("id", form.batch_id);
+      const req = getRequestStatus(editId, "edit");
+      if (req) {
+        await supabase.from("change_requests").delete().eq("id", req.id);
+      }
+      toast.success("QC test updated successfully!");
+      setEditId(null);
+    } else {
+      const { error } = await supabase.from("qc_tests").insert([form]);
+      if (error) return toast.error(error.message);
 
-    toast.success("Quality Control test recorded successfully!");
+      // Update the production batch status to completed/rejected
+      await supabase
+        .from("production_batches")
+        .update({ status: form.status === "approved" ? "completed" : "cancelled" })
+        .eq("id", form.batch_id);
+
+      toast.success("Quality Control test recorded successfully!");
+    }
+
     setForm({
       batch_id: "",
       moisture: 5.0,
@@ -1667,6 +2133,68 @@ export function QcManagementModule() {
         <StatusBadge label={r.status} tone={r.status === "approved" ? "success" : "danger"} />
       ),
     },
+    {
+      key: "actions",
+      header: "Actions",
+      align: "right" as const,
+      render: (r: any) => {
+        const isAdmin = ["super-admin", "admin"].includes(session?.role || "");
+        const editReq = getRequestStatus(r.id, "edit");
+        const delReq = getRequestStatus(r.id, "delete");
+
+        return (
+          <div className="flex justify-end gap-2 items-center text-xs">
+            {isAdmin || editReq?.status === "approved" ? (
+              <button
+                onClick={() => handleEdit(r)}
+                className="rounded px-2 py-1 bg-primary/10 hover:bg-primary/20 text-primary transition-colors font-semibold"
+                title={editReq?.status === "approved" ? "Approved by Admin" : "Edit"}
+              >
+                Edit {editReq?.status === "approved" && "✅"}
+              </button>
+            ) : editReq?.status === "pending" ? (
+              <span className="text-muted-foreground italic font-medium">Edit Pending...</span>
+            ) : (
+              <button
+                onClick={() => handleRequestChange(r, "edit")}
+                className="rounded px-2 py-1 border border-input hover:bg-secondary text-muted-foreground transition-colors font-medium"
+                title="Request Edit"
+              >
+                Req Edit
+              </button>
+            )}
+
+            {isAdmin ? (
+              <button
+                onClick={() => executeDelete(r.id, "")}
+                className="rounded p-1 hover:bg-secondary text-destructive transition-colors"
+                title="Delete"
+              >
+                <Trash2 className="h-4 w-4" />
+              </button>
+            ) : delReq?.status === "approved" ? (
+              <button
+                onClick={() => executeDelete(r.id, delReq.id)}
+                className="rounded px-2 py-1 bg-destructive/10 hover:bg-destructive/20 text-destructive transition-colors font-semibold"
+                title="Approved by Admin"
+              >
+                Delete Now ✅
+              </button>
+            ) : delReq?.status === "pending" ? (
+              <span className="text-muted-foreground italic font-medium">Delete Pending...</span>
+            ) : (
+              <button
+                onClick={() => handleRequestChange(r, "delete")}
+                className="rounded px-2 py-1 border border-input hover:bg-secondary text-destructive/80 hover:text-destructive transition-colors font-medium"
+                title="Request Delete"
+              >
+                Req Del
+              </button>
+            )}
+          </div>
+        );
+      },
+    },
   ];
 
   return (
@@ -1676,7 +2204,17 @@ export function QcManagementModule() {
         subtitle="Inspect moisture percentages, physical parameters, and release batches to inventory"
         action={
           <button
-            onClick={() => setShowForm(!showForm)}
+            onClick={() => {
+              setEditId(null);
+              setForm({
+                batch_id: "",
+                moisture: 5.0,
+                aroma: "Premium spice aroma",
+                color: "Correct standard color",
+                status: "approved",
+              });
+              setShowForm(!showForm);
+            }}
             className="inline-flex items-center gap-1.5 rounded-lg bg-primary px-4 py-2 text-sm font-semibold text-primary-foreground shadow-soft hover:bg-primary/90"
           >
             <Plus className="h-4 w-4" /> {showForm ? "View QC Tests" : "Record QC Check"}
@@ -1684,8 +2222,41 @@ export function QcManagementModule() {
         }
       />
 
+      {showRequestModal && (
+        <Panel title={`Request to ${requestForm.action_type === "edit" ? "Edit" : "Delete"} ${requestForm.display_name}`} className="mb-6 border border-primary/20">
+          <form onSubmit={submitChangeRequest} className="p-6 space-y-4">
+            <div className="space-y-1.5">
+              <label className="text-sm font-medium">Reason for requesting change *</label>
+              <textarea
+                value={requestForm.reason}
+                onChange={(e) => setRequestForm({ ...requestForm, reason: e.target.value })}
+                required
+                rows={3}
+                placeholder="e.g. Moisture value was entered wrong (9% instead of 6%), need to fix batch record."
+                className="w-full rounded-lg border border-input bg-card px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-primary/20"
+              />
+            </div>
+            <div className="flex gap-3">
+              <button
+                type="submit"
+                className="rounded-lg bg-primary px-4 py-2 text-sm font-semibold text-primary-foreground hover:bg-primary/90"
+              >
+                Submit Request
+              </button>
+              <button
+                type="button"
+                onClick={() => setShowRequestModal(false)}
+                className="rounded-lg border border-input px-4 py-2 text-sm font-semibold hover:bg-secondary"
+              >
+                Cancel
+              </button>
+            </div>
+          </form>
+        </Panel>
+      )}
+
       {showForm ? (
-        <Panel title="Record Quality Control Inspection">
+        <Panel title={editId ? "Edit Quality Control Inspection" : "Record Quality Control Inspection"}>
           <form onSubmit={onSubmit} className="grid gap-4 p-6 sm:grid-cols-2">
             <div className="space-y-1.5">
               <label className="text-sm font-medium">Select Production Batch *</label>
@@ -1693,7 +2264,8 @@ export function QcManagementModule() {
                 value={form.batch_id}
                 onChange={(e) => setForm({ ...form, batch_id: e.target.value })}
                 required
-                className="w-full rounded-lg border border-input bg-card px-3 py-2.5 text-sm outline-none focus:ring-2 focus:ring-primary/20"
+                disabled={!!editId}
+                className="w-full rounded-lg border border-input bg-card px-3 py-2.5 text-sm outline-none focus:ring-2 focus:ring-primary/20 disabled:opacity-60"
               >
                 <option value="">-- Choose Batch --</option>
                 {batches.map((b) => (
@@ -1748,7 +2320,7 @@ export function QcManagementModule() {
               type="submit"
               className="w-full rounded-lg bg-primary py-2.5 text-sm font-semibold text-primary-foreground sm:col-span-2"
             >
-              Record Inspection & Update Batch
+              {editId ? "Update Inspection Record" : "Record Inspection & Update Batch"}
             </button>
           </form>
         </Panel>

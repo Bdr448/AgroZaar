@@ -27,6 +27,9 @@ import {
   Send,
   PieChart as PieIcon,
   LineChart as LineIcon,
+  Check,
+  X,
+  ShieldAlert,
 } from "lucide-react";
 import { useState, useEffect } from "react";
 import { supabase } from "@/lib/supabase";
@@ -35,6 +38,8 @@ import { DataTable, type Column } from "./DataTable";
 import type { RoleId } from "@/lib/erp/auth";
 import { ROLE_LABELS } from "@/lib/erp/roles";
 import { useAuditLog } from "@/lib/erp/delegation";
+import { useSession } from "@/lib/erp/auth";
+import { toast } from "sonner";
 
 const CHART_COLOR = "var(--primary)";
 const ACCENT_COLOR = "var(--accent)";
@@ -200,6 +205,7 @@ function formatLakh(n: number) {
 }
 
 function SuperAdminDashboard() {
+  const session = useSession();
   const [stats, setStats] = useState({
     salesMtd: 0,
     purchasesMtd: 0,
@@ -212,6 +218,60 @@ function SuperAdminDashboard() {
     recentOrders: [] as any[],
   });
   const [loading, setLoading] = useState(true);
+  const [requests, setRequests] = useState<any[]>([]);
+
+  const loadRequests = async () => {
+    try {
+      const { data, error } = await supabase
+        .from("change_requests")
+        .select(`
+          *,
+          user_profiles:requester_id (
+            name,
+            role
+          )
+        `)
+        .order("created_at", { ascending: false });
+      if (error) throw error;
+      setRequests(data || []);
+    } catch (err: any) {
+      console.error("Failed to load change requests:", err.message);
+    }
+  };
+
+  const handleApprove = async (id: string) => {
+    const toastId = toast.loading("Approving change request...");
+    try {
+      const { error } = await supabase
+        .from("change_requests")
+        .update({ status: "approved", approved_by: session?.id })
+        .eq("id", id);
+      if (error) throw error;
+      toast.dismiss(toastId);
+      toast.success("Request approved. The user is now permitted to execute this action.");
+      loadRequests();
+    } catch (err: any) {
+      toast.dismiss(toastId);
+      toast.error(err.message || "Failed to approve request");
+    }
+  };
+
+  const handleReject = async (id: string) => {
+    const toastId = toast.loading("Rejecting change request...");
+    try {
+      const { error } = await supabase
+        .from("change_requests")
+        .update({ status: "rejected", approved_by: session?.id })
+        .eq("id", id);
+      if (error) throw error;
+      toast.dismiss(toastId);
+      toast.success("Request rejected.");
+      loadRequests();
+    } catch (err: any) {
+      toast.dismiss(toastId);
+      toast.error(err.message || "Failed to reject request");
+    }
+  };
 
   useEffect(() => {
     async function loadStats() {
@@ -298,6 +358,7 @@ function SuperAdminDashboard() {
       }
     }
     loadStats();
+    loadRequests();
   }, []);
 
   if (loading) {
@@ -309,6 +370,8 @@ function SuperAdminDashboard() {
       </div>
     );
   }
+
+  const pendingRequests = requests.filter((r) => r.status === "pending");
 
   return (
     <>
@@ -365,6 +428,70 @@ function SuperAdminDashboard() {
           tone="destructive"
         />
       </div>
+
+      {pendingRequests.length > 0 && (
+        <div className="mt-6">
+          <Panel
+            title="Pending Data Change Requests"
+            subtitle="Security authorization checks required for restricted data edits or deletes"
+            icon={ShieldAlert}
+          >
+            <div className="divide-y divide-border">
+              {pendingRequests.map((req) => (
+                <div
+                  key={req.id}
+                  className="flex flex-wrap items-center justify-between gap-4 px-5 py-4 hover:bg-card/40 transition-colors"
+                >
+                  <div className="space-y-1">
+                    <div className="flex items-center gap-2">
+                      <span className="font-semibold text-sm text-foreground">
+                        {req.user_profiles?.name || "Requester"}
+                      </span>
+                      <span className="text-xs rounded-full bg-secondary px-2 py-0.5 capitalize text-muted-foreground font-medium">
+                        {req.user_profiles?.role || "user"}
+                      </span>
+                      <span className="text-xs text-muted-foreground">•</span>
+                      <span className="text-xs text-muted-foreground">
+                        {new Date(req.created_at).toLocaleString("en-IN")}
+                      </span>
+                    </div>
+                    <p className="text-sm text-foreground">
+                      Requested{" "}
+                      <span
+                        className={`font-semibold ${
+                          req.action_type === "delete" ? "text-destructive" : "text-primary"
+                        }`}
+                      >
+                        {req.action_type.toUpperCase()}
+                      </span>{" "}
+                      permission for record <span className="font-semibold">"{req.record_display_name}"</span> in{" "}
+                      <span className="font-semibold text-accent">{req.module_name}</span> module.
+                    </p>
+                    <p className="text-xs text-muted-foreground font-medium italic">
+                      Reason: "{req.reason}"
+                    </p>
+                  </div>
+                  <div className="flex gap-2">
+                    <button
+                      onClick={() => handleApprove(req.id)}
+                      className="inline-flex items-center gap-1.5 rounded-lg bg-primary px-3 py-1.5 text-xs font-semibold text-primary-foreground hover:bg-primary/90 shadow-soft transition-colors cursor-pointer"
+                    >
+                      <Check className="h-3.5 w-3.5" /> Approve
+                    </button>
+                    <button
+                      onClick={() => handleReject(req.id)}
+                      className="inline-flex items-center gap-1.5 rounded-lg border border-input bg-card px-3 py-1.5 text-xs font-semibold hover:bg-secondary transition-colors cursor-pointer"
+                    >
+                      <X className="h-3.5 w-3.5" /> Reject
+                    </button>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </Panel>
+        </div>
+      )}
+
       <div className="mt-6 grid grid-cols-1 gap-4 lg:grid-cols-3">
         <div className="lg:col-span-2">
           <ChartCard title="Sales Trend (₹ Lakh)">

@@ -1,10 +1,11 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useState, useEffect } from "react";
-import { BookOpen, Plus, Download, FileText, Scale, Wallet, Building2 } from "lucide-react";
+import { BookOpen, Plus, Download, FileText, Scale, Wallet, Building2, X } from "lucide-react";
 import { PageHeader, Panel, StatCard, StatusBadge } from "@/components/erp/widgets";
 import { DataTable, type Column } from "@/components/erp/DataTable";
 import { useSession } from "@/lib/erp/auth";
 import { supabase } from "@/lib/supabase";
+import { toast } from "sonner";
 
 export const Route = createFileRoute("/app/accounting")({
   head: () => ({ meta: [{ title: "Accounting & Vouchers — Agrozaar Foods LLP ERP" }] }),
@@ -211,6 +212,110 @@ export default function AccountingPage() {
   const [tab, setTab] = useState<"vouchers" | "masters" | "reports">("vouchers");
   const [data, setData] = useState<VoucherRow[]>([]);
   const [loading, setLoading] = useState(true);
+  const [accounts, setAccounts] = useState<any[]>([]);
+  const [showVoucherForm, setShowVoucherForm] = useState(false);
+  const [voucherForm, setVoucherForm] = useState({
+    entry_date: new Date().toISOString().split("T")[0],
+    reference_number: "",
+    description: "",
+    debit_account_id: "",
+    credit_account_id: "",
+    amount: "",
+  });
+
+  const loadAccounts = async () => {
+    try {
+      const { data: res } = await supabase.from("chart_of_accounts").select("*").order("code");
+      if (!res || res.length === 0) {
+        // Seed default chart of accounts
+        const defaults = [
+          { code: "1010", name: "HDFC Bank Current Account", account_type: "asset" },
+          { code: "1020", name: "Cash-in-hand Ledger", account_type: "asset" },
+          { code: "1030", name: "Petty Cash Register", account_type: "asset" },
+          { code: "2010", name: "Sundry Creditors", account_type: "liability" },
+          { code: "2020", name: "Sundry Debtors", account_type: "liability" },
+          { code: "3010", name: "Share Capital Account", account_type: "equity" },
+          { code: "4010", name: "Sales Revenue Gross", account_type: "revenue" },
+          { code: "5010", name: "Cost of Raw Spices Inward", account_type: "expense" },
+          { code: "5020", name: "Factory Electricity Charges", account_type: "expense" },
+          { code: "5030", name: "Freight & Transport Charges", account_type: "expense" },
+          { code: "5040", name: "Employee Payroll Costs", account_type: "expense" },
+          { code: "5050", name: "Packaging Materials Procurement", account_type: "expense" },
+          { code: "5060", name: "Office Stationery", account_type: "expense" },
+        ];
+        await supabase.from("chart_of_accounts").insert(defaults);
+        const { data: reloaded } = await supabase.from("chart_of_accounts").select("*").order("code");
+        setAccounts(reloaded || []);
+      } else {
+        setAccounts(res);
+      }
+    } catch (err) {
+      console.error(err);
+    }
+  };
+
+  const handleCreateVoucher = async (e: React.FormEvent) => {
+    e.preventDefault();
+    const amt = parseFloat(voucherForm.amount);
+    if (!voucherForm.debit_account_id || !voucherForm.credit_account_id || !amt || amt <= 0) {
+      return toast.error("Please fill in all fields with a valid amount.");
+    }
+    if (voucherForm.debit_account_id === voucherForm.credit_account_id) {
+      return toast.error("Debit and Credit accounts cannot be the same.");
+    }
+    if (!user) return;
+
+    const toastId = toast.loading("Posting journal voucher...");
+    try {
+      // 1. Insert into journal_entries
+      const { data: entry, error: entryErr } = await supabase
+        .from("journal_entries")
+        .insert({
+          entry_date: voucherForm.entry_date,
+          reference_number: voucherForm.reference_number || `JV-${Math.floor(1000 + Math.random() * 9000)}`,
+          description: voucherForm.description,
+          created_by: user.id,
+        })
+        .select()
+        .single();
+
+      if (entryErr) throw new Error(entryErr.message);
+
+      // 2. Insert Debit line
+      const { error: debitErr } = await supabase.from("journal_lines").insert({
+        entry_id: entry.id,
+        account_id: voucherForm.debit_account_id,
+        debit_amount: amt,
+        credit_amount: 0,
+      });
+      if (debitErr) throw new Error(debitErr.message);
+
+      // 3. Insert Credit line
+      const { error: creditErr } = await supabase.from("journal_lines").insert({
+        entry_id: entry.id,
+        account_id: voucherForm.credit_account_id,
+        debit_amount: 0,
+        credit_amount: amt,
+      });
+      if (creditErr) throw new Error(creditErr.message);
+
+      toast.dismiss(toastId);
+      toast.success("Voucher posted successfully!");
+      setShowVoucherForm(false);
+      setVoucherForm({
+        entry_date: new Date().toISOString().split("T")[0],
+        reference_number: "",
+        description: "",
+        debit_account_id: "",
+        credit_account_id: "",
+        amount: "",
+      });
+      loadData();
+    } catch (err: any) {
+      toast.dismiss(toastId);
+      toast.error(err.message || "Failed to post voucher");
+    }
+  };
 
   const loadData = async () => {
     setLoading(true);
@@ -270,6 +375,7 @@ export default function AccountingPage() {
 
   useEffect(() => {
     loadData();
+    loadAccounts();
   }, []);
 
   if (!user) return null;
@@ -304,13 +410,117 @@ export default function AccountingPage() {
         title="Accounting & Vouchers"
         subtitle="General accounting entries, masters and financial reports"
         action={
-          <button className="inline-flex items-center gap-1.5 rounded-lg bg-primary px-4 py-2 text-sm font-semibold text-primary-foreground shadow-soft hover:bg-primary/90">
+          <button 
+            onClick={() => setShowVoucherForm(true)}
+            className="inline-flex items-center gap-1.5 rounded-lg bg-primary px-4 py-2 text-sm font-semibold text-primary-foreground shadow-soft hover:bg-primary/90"
+          >
             <Plus className="h-4 w-4" /> New Voucher
           </button>
         }
       />
 
-      <div className="mb-6 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+      {showVoucherForm && (
+        <Panel title="Post New Journal Voucher" className="mb-6">
+          <form onSubmit={handleCreateVoucher} className="grid gap-4 p-6 sm:grid-cols-2">
+            <div className="space-y-1.5">
+              <label className="text-sm font-medium">Voucher Date *</label>
+              <input
+                type="date"
+                value={voucherForm.entry_date}
+                onChange={(e) => setVoucherForm({ ...voucherForm, entry_date: e.target.value })}
+                required
+                className="w-full rounded-lg border border-input bg-card px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-primary/20"
+              />
+            </div>
+
+            <div className="space-y-1.5">
+              <label className="text-sm font-medium">Reference / Voucher No</label>
+              <input
+                value={voucherForm.reference_number}
+                onChange={(e) => setVoucherForm({ ...voucherForm, reference_number: e.target.value })}
+                placeholder="e.g. JV-2045 (auto-generated if empty)"
+                className="w-full rounded-lg border border-input bg-card px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-primary/20"
+              />
+            </div>
+
+            <div className="space-y-1.5">
+              <label className="text-sm font-medium">Debit Ledger (Account Dr.) *</label>
+              <select
+                value={voucherForm.debit_account_id}
+                onChange={(e) => setVoucherForm({ ...voucherForm, debit_account_id: e.target.value })}
+                required
+                className="w-full rounded-lg border border-input bg-card px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-primary/20"
+              >
+                <option value="">-- Select Debit Account --</option>
+                {accounts.map((acc) => (
+                  <option key={acc.id} value={acc.id}>
+                    {acc.code} - {acc.name} ({acc.account_type})
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            <div className="space-y-1.5">
+              <label className="text-sm font-medium">Credit Ledger (Account Cr.) *</label>
+              <select
+                value={voucherForm.credit_account_id}
+                onChange={(e) => setVoucherForm({ ...voucherForm, credit_account_id: e.target.value })}
+                required
+                className="w-full rounded-lg border border-input bg-card px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-primary/20"
+              >
+                <option value="">-- Select Credit Account --</option>
+                {accounts.map((acc) => (
+                  <option key={acc.id} value={acc.id}>
+                    {acc.code} - {acc.name} ({acc.account_type})
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            <div className="space-y-1.5">
+              <label className="text-sm font-medium">Amount (INR) *</label>
+              <input
+                type="number"
+                value={voucherForm.amount}
+                onChange={(e) => setVoucherForm({ ...voucherForm, amount: e.target.value })}
+                required
+                placeholder="e.g. 50000"
+                className="w-full rounded-lg border border-input bg-card px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-primary/20"
+              />
+            </div>
+
+            <div className="space-y-1.5 sm:col-span-2">
+              <label className="text-sm font-medium">Description / Narration *</label>
+              <textarea
+                value={voucherForm.description}
+                onChange={(e) => setVoucherForm({ ...voucherForm, description: e.target.value })}
+                required
+                rows={3}
+                placeholder="e.g. Being electricity charges paid via HDFC Bank current account"
+                className="w-full rounded-lg border border-input bg-card px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-primary/20"
+              />
+            </div>
+
+            <div className="flex gap-3 sm:col-span-2">
+              <button
+                type="submit"
+                className="rounded-lg bg-primary px-4 py-2 text-sm font-semibold text-primary-foreground hover:bg-primary/90"
+              >
+                Post Voucher
+              </button>
+              <button
+                type="button"
+                onClick={() => setShowVoucherForm(false)}
+                className="rounded-lg border border-input px-4 py-2 text-sm font-semibold hover:bg-secondary"
+              >
+                Cancel
+              </button>
+            </div>
+          </form>
+        </Panel>
+      )}
+
+      <div className="mb-6 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
         <StatCard
           label="Total debits"
           value={inr(data.reduce((acc, r) => acc + r.amount, 0))}
@@ -324,7 +534,7 @@ export default function AccountingPage() {
           icon={BookOpen}
           tone="accent"
         />
-        <StatCard label="Ledgers" value="74" icon={Building2} tone="primary" />
+        <StatCard label="Ledgers" value={String(accounts.length || 74)} icon={Building2} tone="primary" />
       </div>
 
       <div className="mb-4 flex gap-1 rounded-lg border border-border bg-card p-1">
@@ -377,17 +587,47 @@ export default function AccountingPage() {
       )}
 
       {tab === "masters" && (
-        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-          {MASTERS.map((m) => (
-            <Panel key={m}>
-              <div className="flex items-center gap-3 p-5">
-                <span className="flex h-10 w-10 items-center justify-center rounded-lg bg-spice-brown/10 text-spice-brown">
-                  <Building2 className="h-5 w-5" />
-                </span>
-                <p className="text-sm font-medium text-foreground">{m}</p>
-              </div>
-            </Panel>
-          ))}
+        <div className="space-y-6">
+          <div className="rounded-xl border border-border bg-card p-6">
+            <h3 className="font-heading text-lg font-bold text-spice-brown mb-4">Chart of Accounts</h3>
+            <div className="overflow-x-auto">
+              <table className="w-full text-left border-collapse">
+                <thead>
+                  <tr className="border-b border-border text-sm font-semibold text-muted-foreground">
+                    <th className="py-2.5 px-4 text-left">Code</th>
+                    <th className="py-2.5 px-4 text-left">Account Ledger Name</th>
+                    <th className="py-2.5 px-4 text-left">Account Type</th>
+                    <th className="py-2.5 px-4 text-left">Status</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-border text-sm">
+                  {accounts.map((acc) => (
+                    <tr key={acc.id} className="hover:bg-secondary/20">
+                      <td className="py-2.5 px-4 font-mono font-medium text-left">{acc.code}</td>
+                      <td className="py-2.5 px-4 font-medium text-foreground text-left">{acc.name}</td>
+                      <td className="py-2.5 px-4 text-left">
+                        <StatusBadge
+                          label={acc.account_type}
+                          tone={
+                            acc.account_type === "asset"
+                              ? "success"
+                              : acc.account_type === "liability"
+                                ? "danger"
+                                : acc.account_type === "expense"
+                                  ? "warning"
+                                  : "info"
+                          }
+                        />
+                      </td>
+                      <td className="py-2.5 px-4 text-left">
+                        <StatusBadge label={acc.is_active ? "Active" : "Inactive"} tone={acc.is_active ? "success" : "neutral"} />
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </div>
         </div>
       )}
 

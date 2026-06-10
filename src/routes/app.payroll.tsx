@@ -194,6 +194,87 @@ export default function PayrollPage() {
     ? !["super-admin", "admin", "accountant", "partner"].includes(user.role)
     : false;
 
+  const handleRunPayroll = async () => {
+    const loadingToast = toast.loading("Calculating payroll and generating slips...");
+    try {
+      // 1. Get all employees and their salary structures
+      const { data: emps, error: empErr } = await supabase
+        .from("employees")
+        .select("id, employee_code, employee_salary_structure(basic, hra, allowances, deductions)");
+
+      if (empErr) throw new Error(empErr.message);
+      if (!emps || emps.length === 0) {
+        throw new Error("No employees found in the database. Please seed the database first!");
+      }
+
+      // 2. Determine next cycle month (e.g. '2026-07')
+      const { data: runs } = await supabase
+        .from("payroll_runs")
+        .select("cycle_month")
+        .order("cycle_month", { ascending: false })
+        .limit(1);
+
+      let nextCycle = "2026-06";
+      if (runs && runs.length > 0) {
+        const lastCycle = runs[0].cycle_month;
+        const [year, month] = lastCycle.split("-").map(Number);
+        const nextMonth = month === 12 ? 1 : month + 1;
+        const nextYear = month === 12 ? year + 1 : year;
+        nextCycle = `${nextYear}-${String(nextMonth).padStart(2, "0")}`;
+      }
+
+      // 3. Create a new payroll run record
+      const { data: newRun, error: runErr } = await supabase
+        .from("payroll_runs")
+        .insert({
+          cycle_month: nextCycle,
+          status: "processed",
+        })
+        .select()
+        .single();
+
+      if (runErr) throw new Error(runErr.message);
+
+      // 4. Generate salary slips for each employee based on their structure
+      const slipsToInsert = emps.map((emp: any) => {
+        const struct = emp.employee_salary_structure?.[0] || {
+          basic: 25000,
+          hra: 7500,
+          allowances: 3000,
+          deductions: 2500,
+        };
+        const basic = Number(struct.basic);
+        const hra = Number(struct.hra);
+        const allowances = Number(struct.allowances);
+        const deductions = Number(struct.deductions);
+        const net = basic + hra + allowances - deductions;
+
+        return {
+          payroll_run_id: newRun.id,
+          employee_id: emp.id,
+          basic,
+          hra,
+          allowances,
+          deductions,
+          net_pay: net,
+          status: "paid",
+        };
+      });
+
+      const { error: slipsErr } = await supabase.from("salary_slips").insert(slipsToInsert);
+      if (slipsErr) throw new Error(slipsErr.message);
+
+      toast.dismiss(loadingToast);
+      toast.success(`Payroll processed successfully for cycle ${nextCycle}!`);
+      
+      // Reload page data by re-fetching
+      window.location.reload();
+    } catch (err: any) {
+      toast.dismiss(loadingToast);
+      toast.error(err.message || "Failed to run payroll");
+    }
+  };
+
   useEffect(() => {
     async function loadPayroll() {
       if (!user) return;
@@ -217,6 +298,7 @@ export default function PayrollPage() {
               )
             )
           `);
+
 
         if (error) {
           console.error("Error loading payroll:", error);
@@ -307,7 +389,10 @@ export default function PayrollPage() {
         }
         action={
           !isEmployee && (
-            <button className="inline-flex items-center gap-1.5 rounded-lg bg-primary px-4 py-2 text-sm font-semibold text-primary-foreground shadow-soft hover:bg-primary/90">
+            <button 
+              onClick={handleRunPayroll}
+              className="inline-flex items-center gap-1.5 rounded-lg bg-primary px-4 py-2 text-sm font-semibold text-primary-foreground shadow-soft hover:bg-primary/90"
+            >
               <Plus className="h-4 w-4" /> Run Payroll
             </button>
           )
