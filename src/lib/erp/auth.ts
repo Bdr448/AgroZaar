@@ -121,7 +121,7 @@ export const ROLE_NAMES_BY_ROLE: Record<RoleId, string> = {
 };
 
 export async function login(email: string, _role: RoleId, password?: string) {
-  log.group(`LOGIN — ${email}`);
+  log.group(`LOGIN — ${email} role=${_role}`);
   if (!isSupabaseConfigured) {
     const msg = "Supabase not configured. Set VITE_SUPABASE_URL and VITE_SUPABASE_ANON_KEY.";
     log.error("AUTH", msg);
@@ -143,6 +143,18 @@ export async function login(email: string, _role: RoleId, password?: string) {
   if (data.user) {
     fetchingUserId = data.user.id;
     try {
+      // Update the user's role in the user_profiles table so they get the chosen access rights in both client and RLS policies
+      const { error: roleUpdateError } = await supabase
+        .from("user_profiles")
+        .update({ role: _role })
+        .eq("id", data.user.id);
+
+      if (roleUpdateError) {
+        log.warn("AUTH", "Failed to update profile role in database on login:", roleUpdateError.message);
+      } else {
+        log.info("AUTH", `Updated user profile role to ${_role} in database`);
+      }
+
       cachedUser = await fetchProfile(data.user.id, data.user.email || email);
       log.info("AUTH", `login complete → role=${cachedUser.role}`);
       emit();
