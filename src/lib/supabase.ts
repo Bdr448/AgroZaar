@@ -22,10 +22,25 @@ export const isSupabaseConfigured = Boolean(
 
 log.network("SUPABASE", `isSupabaseConfigured = ${isSupabaseConfigured}`);
 
-// Intercept fetch to log every Supabase HTTP call
+// Intercept fetch to log/mock every Supabase HTTP call
 const _fetch = globalThis.fetch;
 globalThis.fetch = async (input, init) => {
   const url = typeof input === "string" ? input : (input as Request).url;
+
+  // If Supabase is not configured, intercept all database/auth calls and resolve instantly with mock empty responses
+  if (!isSupabaseConfigured && (url.includes("supabase.co") || url.includes("placeholder.supabase.co"))) {
+    const method = init?.method || "GET";
+    const cleanUrl = url.split("?")[0];
+    log.network("MOCK-FETCH", `${method} ${cleanUrl}`);
+
+    // Return empty array for REST calls, empty object for others
+    const mockData = url.includes("/rest/v1/") ? [] : {};
+    return new Response(JSON.stringify(mockData), {
+      status: 200,
+      headers: { "Content-Type": "application/json" },
+    });
+  }
+
   if (supabaseUrl && url.includes(supabaseUrl)) {
     const method = init?.method || "GET";
     const short = url.replace(supabaseUrl, "[supabase]");
