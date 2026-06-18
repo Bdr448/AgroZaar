@@ -58,24 +58,53 @@ export function Contact() {
             with a tailored proposal.
           </p>
 
-          <div className="mt-6 flex overflow-x-auto md:grid md:grid-cols-2 gap-4 pb-4 md:pb-0 scrollbar-none snap-x snap-mandatory">
-            {details.map((d) => (
-              <a
-                key={d.label}
-                href={d.href ?? "#"}
-                className="flex items-start gap-3 rounded-xl border border-border bg-card p-4 shadow-soft transition-shadow hover:shadow-card min-w-[240px] sm:min-w-[280px] md:min-w-0 snap-start shrink-0 md:shrink"
-              >
-                <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-primary/10 text-primary">
-                  <d.icon className="h-5 w-5" />
-                </span>
-                <div>
-                  <p className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
-                    {d.label}
-                  </p>
-                  <p className="mt-0.5 text-xs font-semibold text-foreground">{d.value}</p>
-                </div>
-              </a>
-            ))}
+          <div className="relative mt-6 overflow-hidden w-full">
+            {/* Gradient Fades */}
+            <div className="absolute left-0 top-0 bottom-0 w-12 md:w-20 bg-gradient-to-r from-background to-transparent z-10 pointer-events-none" />
+            <div className="absolute right-0 top-0 bottom-0 w-12 md:w-20 bg-gradient-to-l from-background to-transparent z-10 pointer-events-none" />
+
+            <div className="flex w-max animate-marquee-slow hover:[animation-play-state:paused] py-2">
+              {/* First Set */}
+              <div className="flex shrink-0">
+                {details.map((d) => (
+                  <a
+                    key={`c1-${d.label}`}
+                    href={d.href ?? "#"}
+                    className="flex items-start gap-3 rounded-xl border border-border bg-card p-4 shadow-soft transition-shadow hover:shadow-card w-[280px] md:w-[320px] shrink-0 mr-4 text-left"
+                  >
+                    <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-primary/10 text-primary">
+                      <d.icon className="h-5 w-5" />
+                    </span>
+                    <div>
+                      <p className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
+                        {d.label}
+                      </p>
+                      <p className="mt-0.5 text-xs font-semibold text-foreground">{d.value}</p>
+                    </div>
+                  </a>
+                ))}
+              </div>
+              {/* Second Set */}
+              <div className="flex shrink-0" aria-hidden="true">
+                {details.map((d) => (
+                  <a
+                    key={`c2-${d.label}`}
+                    href={d.href ?? "#"}
+                    className="flex items-start gap-3 rounded-xl border border-border bg-card p-4 shadow-soft transition-shadow hover:shadow-card w-[280px] md:w-[320px] shrink-0 mr-4 text-left"
+                  >
+                    <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-primary/10 text-primary">
+                      <d.icon className="h-5 w-5" />
+                    </span>
+                    <div>
+                      <p className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
+                        {d.label}
+                      </p>
+                      <p className="mt-0.5 text-xs font-semibold text-foreground">{d.value}</p>
+                    </div>
+                  </a>
+                ))}
+              </div>
+            </div>
           </div>
 
           <a
