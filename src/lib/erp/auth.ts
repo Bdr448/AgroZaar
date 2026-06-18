@@ -123,10 +123,17 @@ export const ROLE_NAMES_BY_ROLE: Record<RoleId, string> = {
 export async function login(email: string, _role: RoleId, password?: string) {
   log.group(`LOGIN — ${email} role=${_role}`);
   if (!isSupabaseConfigured) {
-    const msg = "Supabase not configured. Set VITE_SUPABASE_URL and VITE_SUPABASE_ANON_KEY.";
-    log.error("AUTH", msg);
+    log.warn("AUTH", "Supabase not configured. Falling back to local demo login.");
+    cachedUser = {
+      id: "demo-user-id",
+      name: ROLE_NAMES_BY_ROLE[_role] || "Demo User",
+      email: email || "demo@example.com",
+      role: _role,
+      loginAt: Date.now(),
+    };
+    emit();
     log.groupEnd();
-    throw new Error(msg);
+    return cachedUser;
   }
 
   log.info("AUTH", "signInWithPassword...");
