@@ -90,6 +90,7 @@ const superAdminNav: NavItem[] = [
   item("Notifications", Bell),
   item("User Management", UserCog),
   item("Settings", Settings),
+  item("Landing Page", Globe),
 ];
 
 // Admin shares the full nav except the Owner-only private vault.
@@ -112,6 +113,7 @@ const supervisorNav: NavItem[] = [
   item("Batch Creation", Beaker),
   item("Warehouse", Warehouse),
   item("Dispatch", Send),
+  item("Landing Page", Globe),
   item("Payroll", KeyRound),
 ];
 

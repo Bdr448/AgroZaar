@@ -9,9 +9,7 @@ const productLinks = [
 ];
 const quickLinks = [
   { label: "About", href: "#about" },
-  { label: "Why Choose Us", href: "#why" },
   { label: "Export", href: "#export" },
-  { label: "Manufacturing", href: "#process" },
   { label: "Contact", href: "#contact" },
 ];
 

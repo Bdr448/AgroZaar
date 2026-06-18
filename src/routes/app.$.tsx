@@ -1,6 +1,13 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useRouter } from "@/lib/simple-router";
 import { useState, useEffect } from "react";
+import heroImg from "@/assets/hero-turmeric.jpg";
+import founder from "@/assets/founder.jpg.asset.json";
+import turmeric from "@/assets/product-turmeric.jpg";
+import chilli from "@/assets/product-chilli.jpg";
+import coriander from "@/assets/product-coriander.jpg";
+import cumin from "@/assets/product-cumin.jpg";
+import garam from "@/assets/product-garam-masala.jpg";
 import { toast } from "sonner";
 import { useSession } from "@/lib/erp/auth";
 import { supabase } from "@/lib/supabase";
@@ -44,6 +51,8 @@ import {
   Plus,
   Trash2,
   Download,
+  Globe,
+  X,
 } from "lucide-react";
 
 export const Route = createFileRoute("/app/$")({
@@ -217,6 +226,9 @@ function QuotationsModule() {
 
   const executeDelete = async (id: string, reqId?: string) => {
     if (!window.confirm("Are you sure you want to delete this quotation?")) return;
+    const oldRec = data.find((q) => q.id === id);
+    const oldValue = oldRec ? `Quote for ${oldRec.customers?.name || "Client"} - ₹${oldRec.grand_total}` : "";
+
     const { error } = await supabase
       .from("quotations")
       .update({ is_deleted: true })
@@ -227,6 +239,18 @@ function QuotationsModule() {
     if (reqId) {
       await supabase.from("change_requests").delete().eq("id", reqId);
     }
+
+    if (session?.role !== "super-admin") {
+      await supabase.from("delegation_audit_logs").insert({
+        user_id: session?.id,
+        action: "Delete Quotation",
+        module: "Quotations",
+        old_value: oldValue,
+        new_value: "Soft Deleted",
+        permission_source: "Role Permission",
+      });
+    }
+
     toast.success("Quotation deleted successfully.");
     loadData();
   };
@@ -251,9 +275,27 @@ function QuotationsModule() {
       status: form.status,
     };
 
+    const targetCustomer = customers.find((c) => c.id === form.customer_id);
+    const custName = targetCustomer ? targetCustomer.name : "Client";
+
     if (editId) {
+      const oldRec = data.find((q) => q.id === editId);
+      const oldValue = oldRec ? `Quote for ${oldRec.customers?.name || "Client"} - ₹${oldRec.grand_total}` : "";
+      const newValue = `Quote for ${custName} - ₹${grand}`;
+
       const { error } = await supabase.from("quotations").update(payload).eq("id", editId);
       if (error) return toast.error(error.message);
+
+      if (session?.role !== "super-admin") {
+        await supabase.from("delegation_audit_logs").insert({
+          user_id: session?.id,
+          action: "Edit Quotation",
+          module: "Quotations",
+          old_value: oldValue,
+          new_value: newValue,
+          permission_source: "Role Permission",
+        });
+      }
 
       const req = getRequestStatus(editId, "edit");
       if (req) {
@@ -262,8 +304,24 @@ function QuotationsModule() {
       toast.success("Quotation updated successfully!");
       setEditId(null);
     } else {
-      const { error } = await supabase.from("quotations").insert([payload]);
+      const { data: inserted, error } = await supabase
+        .from("quotations")
+        .insert([payload])
+        .select()
+        .single();
       if (error) return toast.error(error.message);
+
+      if (session?.role !== "super-admin") {
+        await supabase.from("delegation_audit_logs").insert({
+          user_id: session?.id,
+          action: "Add Quotation",
+          module: "Quotations",
+          old_value: "",
+          new_value: `Quote for ${custName} - ₹${grand}`,
+          permission_source: "Role Permission",
+        });
+      }
+
       toast.success("Quotation created successfully!");
     }
 
@@ -1399,57 +1457,81 @@ function InvoicesModule() {
     const doc = new jsPDF({ unit: "pt", format: "a4" });
     const W = doc.internal.pageSize.getWidth();
 
-    const BRAND = { r: 232, g: 155, b: 0 }; // turmeric
-    const DARK = { r: 31, g: 31, b: 31 };
-    const LIGHT = { r: 250, g: 248, b: 245 };
+    const BRAND = { r: 37, g: 99, b: 235 }; // royal blue #2563EB
+    const DARK = { r: 30, g: 41, b: 59 }; // slate-800
 
-    // Background header band
-    doc.setFillColor(DARK.r, DARK.g, DARK.b);
-    doc.rect(0, 0, W, 100, "F");
-
-    // Brand accent bar
-    doc.setFillColor(BRAND.r, BRAND.g, BRAND.b);
-    doc.rect(0, 100, W, 4, "F");
-
-    // Company name
-    doc.setTextColor(255, 255, 255);
+    // ── Header (Clean slate text, no solid dark band) ──
     doc.setFont("helvetica", "bold");
-    doc.setFontSize(22);
-    doc.text("AGROZAAR FOODS LLP", 40, 48);
+    doc.setFontSize(24);
+    doc.setTextColor(DARK.r, DARK.g, DARK.b);
+    doc.text("AGROZAAR FOODS LLP", 40, 46);
 
     doc.setFont("helvetica", "normal");
     doc.setFontSize(9);
-    doc.setTextColor(200, 195, 188);
-    doc.text("Premium Spices & Food Products", 40, 62);
-    doc.text("GSTIN: 24ABCDE1234F1Z5  |  FSSAI: 10023012000001", 40, 75);
+    doc.setTextColor(71, 85, 105); // slate-600
+    doc.text("Premium Spices & Food Products", 40, 60);
+    doc.text("GSTIN: 24ABCDE1234F1Z5  |  FSSAI: 10023012000001", 40, 73);
+    doc.text(
+      "Village Deesa, Banaskantha, Gujarat – 385535  |  info@agrozaar.in  |  +91 98765 43210",
+      40,
+      86,
+    );
 
-    // Invoice badge
-    doc.setFillColor(BRAND.r, BRAND.g, BRAND.b);
-    doc.roundedRect(W - 205, 30, 165, 34, 4, 4, "F");
-    doc.setTextColor(DARK.r, DARK.g, DARK.b);
+    // ── INVOICE badge (right-aligned border badge) ──
+    doc.setDrawColor(BRAND.r, BRAND.g, BRAND.b);
+    doc.setLineWidth(1.5);
+    doc.roundedRect(W - 155, 28, 115, 38, 4, 4, "D");
+    doc.setTextColor(BRAND.r, BRAND.g, BRAND.b);
+    doc.setFont("helvetica", "bold");
+    doc.setFontSize(12);
+    doc.text("TAX INVOICE", W - 97, 52, { align: "center" });
+
+    // ── Meta block & Billed To ──
+    let y = 130;
+    
+    // Details block (Left)
+    doc.setFont("helvetica", "normal");
+    doc.setFontSize(9);
+    doc.setTextColor(30, 41, 59);
+
+    const metaLeft = [
+      ["Invoice No.", inv.invNo],
+      ["Billing Date", inv.date],
+      ["Status", inv.status],
+    ];
+    metaLeft.forEach(([label, val], i) => {
+      doc.setFont("helvetica", "bold");
+      doc.setTextColor(71, 85, 105); // slate-600
+      doc.text(label + ":", 40, y + i * 16);
+      doc.setFont("helvetica", "normal");
+      doc.setTextColor(30, 41, 59); // slate-800
+      doc.text(val, 110, y + i * 16);
+    });
+
+    // Bill To (Right)
+    const rightX = W / 2 + 20;
+    doc.setFillColor(248, 250, 252); // slate-50
+    doc.setDrawColor(226, 232, 240); // slate-200
+    doc.setLineWidth(1);
+    doc.roundedRect(rightX - 10, y - 14, W - rightX, 85, 4, 4, "FD");
+
+    doc.setFont("helvetica", "bold");
+    doc.setFontSize(8);
+    doc.setTextColor(BRAND.r, BRAND.g, BRAND.b);
+    doc.text("BILL TO", rightX, y);
+
     doc.setFont("helvetica", "bold");
     doc.setFontSize(11);
-    doc.text("TAX INVOICE", W - 122, 51, { align: "center" });
-
-    let y = 140;
-    doc.setFont("helvetica", "bold");
-    doc.setFontSize(11);
-    doc.setTextColor(DARK.r, DARK.g, DARK.b);
-    doc.text("Billed To:", 40, y);
-    doc.text("Invoice Details:", W / 2 + 40, y);
+    doc.setTextColor(30, 41, 59);
+    doc.text(inv.customer, rightX, y + 14);
 
     doc.setFont("helvetica", "normal");
-    doc.setFontSize(9.5);
-    doc.setTextColor(80, 80, 80);
-    doc.text(inv.customer, 40, y + 16);
-    doc.text("Designated Spice Buyer", 40, y + 28);
-    doc.text("GSTIN: unregistered/SEZ client", 40, y + 40);
+    doc.setFontSize(9);
+    doc.setTextColor(71, 85, 105);
+    doc.text("Designated Spice Buyer", rightX, y + 28);
+    doc.text("GSTIN: unregistered/SEZ client", rightX, y + 40);
 
-    doc.text(`Invoice No: ${inv.invNo}`, W / 2 + 40, y + 16);
-    doc.text(`Date: ${inv.date}`, W / 2 + 40, y + 28);
-    doc.text(`Status: ${inv.status}`, W / 2 + 40, y + 40);
-
-    y = y + 70;
+    y = y + 90;
 
     const headers = [["Item Description", "HSN Code", "Qty (kg)", "Rate (₹/kg)", "Total (₹)"]];
     const body = [
@@ -1464,28 +1546,30 @@ function InvoicesModule() {
       head: headers,
       body: body,
       headStyles: {
-        fillColor: [DARK.r, DARK.g, DARK.b],
-        textColor: [BRAND.r, BRAND.g, BRAND.b],
+        fillColor: [BRAND.r, BRAND.g, BRAND.b], // royal blue
+        textColor: [255, 255, 255],
         fontStyle: "bold",
         fontSize: 9.5,
       },
-      bodyStyles: { fontSize: 8.5, textColor: [DARK.r, DARK.g, DARK.b] },
-      alternateRowStyles: { fillColor: [LIGHT.r, LIGHT.g, LIGHT.b] },
+      bodyStyles: { fontSize: 8.5, textColor: [30, 41, 59] },
+      alternateRowStyles: { fillColor: [248, 250, 252] },
       margin: { left: 40, right: 40 },
+      tableLineWidth: 0.3,
+      tableLineColor: [226, 232, 240],
     });
 
     const pageH = doc.internal.pageSize.getHeight();
-    doc.setFillColor(DARK.r, DARK.g, DARK.b);
-    doc.rect(0, pageH - 32, W, 32, "F");
-    doc.setFillColor(BRAND.r, BRAND.g, BRAND.b);
-    doc.rect(0, pageH - 32, W, 3, "F");
+    doc.setDrawColor(226, 232, 240);
+    doc.setLineWidth(1);
+    doc.line(40, pageH - 45, W - 40, pageH - 45);
+
     doc.setFont("helvetica", "italic");
     doc.setFontSize(8);
-    doc.setTextColor(180, 170, 155);
+    doc.setTextColor(148, 163, 184); // slate-400
     doc.text(
       "Thank you for your business. Generated via Agrozaar Foods LLP ERP Invoice Desk.",
       W / 2,
-      pageH - 14,
+      pageH - 28,
       { align: "center" },
     );
 
@@ -2108,12 +2192,1026 @@ function WarehouseModule() {
 
 /* ── Accounts module ── */
 function AccountsModule() {
+  const session = useSession();
+  const [accounts, setAccounts] = useState<any[]>([]);
+  const [transfers, setTransfers] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [showAddForm, setShowAddForm] = useState(false);
+  const [showTransferForm, setShowTransferForm] = useState(false);
+
+  // Forms state
+  const [newAcc, setNewAcc] = useState({
+    code: "",
+    name: "",
+    account_type: "asset",
+  });
+
+  const [transfer, setTransfer] = useState({
+    from_id: "",
+    to_id: "",
+    amount: "",
+    ref: "",
+    desc: "",
+  });
+
+  const loadData = async () => {
+    setLoading(true);
+    try {
+      // 1. Load accounts
+      let { data: accs, error: accErr } = await supabase
+        .from("chart_of_accounts")
+        .select("*")
+        .order("code");
+      
+      if (accErr) throw accErr;
+
+      if (!accs || accs.length === 0) {
+        // Seed default chart of accounts if none exists
+        const defaults = [
+          { code: "1010", name: "HDFC Bank Current Account", account_type: "asset" },
+          { code: "1020", name: "Cash-in-hand Ledger", account_type: "asset" },
+          { code: "1030", name: "Petty Cash Register", account_type: "asset" },
+          { code: "2010", name: "Sundry Creditors", account_type: "liability" },
+          { code: "2020", name: "Sundry Debtors", account_type: "liability" },
+          { code: "3010", name: "Share Capital Account", account_type: "equity" },
+          { code: "4010", name: "Sales Revenue Gross", account_type: "revenue" },
+          { code: "5010", name: "Cost of Raw Spices Inward", account_type: "expense" },
+        ];
+        await supabase.from("chart_of_accounts").insert(defaults);
+        const { data: reloaded } = await supabase.from("chart_of_accounts").select("*").order("code");
+        accs = reloaded || [];
+      }
+
+      // 2. Load journal lines to calculate balances
+      const { data: lines, error: lineErr } = await supabase
+        .from("journal_lines")
+        .select("account_id, debit_amount, credit_amount");
+      if (lineErr) throw lineErr;
+
+      // Calculate balances in memory
+      const calculated = accs.map((a: any) => {
+        // Seed some standard base balances if there are no lines
+        let bal = 0;
+        if (a.code === "1010") bal = 680000; // HDFC Bank
+        if (a.code === "1020") bal = 120000; // Cash in hand
+        if (a.code === "1030") bal = 15000;  // Petty Cash
+
+        lines?.forEach((l: any) => {
+          if (l.account_id === a.id) {
+            const deb = parseFloat(l.debit_amount || 0);
+            const cred = parseFloat(l.credit_amount || 0);
+            if (a.account_type === "asset" || a.account_type === "expense") {
+              bal += deb - cred;
+            } else {
+              bal += cred - deb;
+            }
+          }
+        });
+        return { ...a, balance: bal };
+      });
+      setAccounts(calculated);
+
+      // 3. Load transfers/contra entries (which are journal entries that move money between asset accounts)
+      const { data: entries, error: entryErr } = await supabase
+        .from("journal_entries")
+        .select("*, journal_lines(*, chart_of_accounts(*))")
+        .order("created_at", { ascending: false });
+      if (entryErr) throw entryErr;
+
+      const mappedTransfers = entries
+        ?.filter((e: any) => {
+          // Keep entries where both debit and credit accounts are asset/cash accounts
+          const debLine = e.journal_lines?.find((l: any) => l.debit_amount > 0);
+          const credLine = e.journal_lines?.find((l: any) => l.credit_amount > 0);
+          return (
+            debLine?.chart_of_accounts?.account_type === "asset" &&
+            credLine?.chart_of_accounts?.account_type === "asset"
+          );
+        })
+        .map((e: any) => {
+          const debLine = e.journal_lines?.find((l: any) => l.debit_amount > 0);
+          const credLine = e.journal_lines?.find((l: any) => l.credit_amount > 0);
+          return {
+            id: e.id,
+            date: e.entry_date,
+            ref: e.reference_number,
+            description: e.description,
+            from: credLine?.chart_of_accounts?.name || "Source",
+            to: debLine?.chart_of_accounts?.name || "Destination",
+            amount: debLine?.debit_amount || credLine?.credit_amount || 0,
+          };
+        });
+      setTransfers(mappedTransfers || []);
+
+    } catch (err: any) {
+      toast.error(err.message || "Failed to load accounts information");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    loadData();
+  }, []);
+
+  const handleAddAccount = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!newAcc.code || !newAcc.name) return toast.error("All fields are required");
+
+    try {
+      const { error } = await supabase.from("chart_of_accounts").insert([newAcc]);
+      if (error) throw error;
+      toast.success("New account ledger added successfully!");
+      setNewAcc({ code: "", name: "", account_type: "asset" });
+      setShowAddForm(false);
+      loadData();
+    } catch (err: any) {
+      toast.error(err.message || "Failed to add account");
+    }
+  };
+
+  const handleTransfer = async (e: React.FormEvent) => {
+    e.preventDefault();
+    const amt = parseFloat(transfer.amount);
+    if (!transfer.from_id || !transfer.to_id || isNaN(amt) || amt <= 0) {
+      return toast.error("Please fill in valid transfer details");
+    }
+    if (transfer.from_id === transfer.to_id) {
+      return toast.error("Source and destination accounts cannot be the same");
+    }
+
+    const source = accounts.find((a) => a.id === transfer.from_id);
+    if (source && source.balance < amt) {
+      return toast.error(`Insufficient balance in ${source.name}. Available: ₹${source.balance.toLocaleString()}`);
+    }
+
+    const toastId = toast.loading("Processing ledger transfer...");
+    try {
+      // 1. Create journal entry
+      const { data: entry, error: entryErr } = await supabase
+        .from("journal_entries")
+        .insert({
+          entry_date: new Date().toISOString().split("T")[0],
+          reference_number: transfer.ref || `TXN-${Math.floor(100000 + Math.random() * 900000)}`,
+          description: transfer.desc || `Fund transfer from ${source?.name} to destination`,
+          created_by: session?.id,
+        })
+        .select()
+        .single();
+      if (entryErr) throw entryErr;
+
+      // 2. Insert debit line (destination receives money)
+      const { error: debErr } = await supabase.from("journal_lines").insert({
+        entry_id: entry.id,
+        account_id: transfer.to_id,
+        debit_amount: amt,
+        credit_amount: 0,
+      });
+      if (debErr) throw debErr;
+
+      // 3. Insert credit line (source pays money)
+      const { error: credErr } = await supabase.from("journal_lines").insert({
+        entry_id: entry.id,
+        account_id: transfer.from_id,
+        debit_amount: 0,
+        credit_amount: amt,
+      });
+      if (credErr) throw credErr;
+
+      toast.dismiss(toastId);
+      toast.success("Transfer completed successfully!");
+      setTransfer({ from_id: "", to_id: "", amount: "", ref: "", desc: "" });
+      setShowTransferForm(false);
+      loadData();
+    } catch (err: any) {
+      toast.dismiss(toastId);
+      toast.error(err.message || "Failed to complete transfer");
+    }
+  };
+
+  const assetAccounts = accounts.filter((a) => a.account_type === "asset");
+
   return (
-    <Stub
-      title="Accounts"
-      subtitle="Manage bank accounts, cash ledgers and wallet balances"
-      icon={Wallet}
-    />
+    <div className="space-y-6">
+      <PageHeader
+        title="Accounts & Wallets"
+        subtitle="Manage cash reserves, company bank accounts, and register fund transfers"
+        action={
+          <div className="flex gap-2">
+            <button
+              onClick={() => setShowTransferForm(true)}
+              className="inline-flex items-center gap-1.5 rounded-lg bg-primary px-4 py-2 text-sm font-semibold text-primary-foreground shadow-soft hover:bg-primary/90 transition-colors"
+            >
+              <Send className="h-4 w-4" /> Transfer Funds
+            </button>
+            <button
+              onClick={() => setShowAddForm(true)}
+              className="inline-flex items-center gap-1.5 rounded-lg border border-input bg-card px-4 py-2 text-sm font-semibold hover:bg-secondary transition-colors"
+            >
+              <Plus className="h-4 w-4" /> Add Account
+            </button>
+          </div>
+        }
+      />
+
+      {/* Add Account Modal Form */}
+      {showAddForm && (
+        <Panel title="Add New Bank or Cash Ledger" className="mb-6">
+          <form onSubmit={handleAddAccount} className="grid gap-4 p-6 sm:grid-cols-3">
+            <div className="space-y-1.5">
+              <label className="text-sm font-medium">Account Code (Unique) *</label>
+              <input
+                type="text"
+                placeholder="e.g. 1040"
+                value={newAcc.code}
+                onChange={(e) => setNewAcc({ ...newAcc, code: e.target.value })}
+                required
+                className="w-full rounded-lg border border-input bg-card px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-primary/20"
+              />
+            </div>
+            <div className="space-y-1.5">
+              <label className="text-sm font-medium">Account / Ledger Name *</label>
+              <input
+                type="text"
+                placeholder="e.g. SBI Current Account"
+                value={newAcc.name}
+                onChange={(e) => setNewAcc({ ...newAcc, name: e.target.value })}
+                required
+                className="w-full rounded-lg border border-input bg-card px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-primary/20"
+              />
+            </div>
+            <div className="space-y-1.5">
+              <label className="text-sm font-medium">Account Type *</label>
+              <select
+                value={newAcc.account_type}
+                onChange={(e) => setNewAcc({ ...newAcc, account_type: e.target.value })}
+                className="w-full rounded-lg border border-input bg-card px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-primary/20"
+              >
+                <option value="asset">Asset (Bank / Cash / Reserves)</option>
+                <option value="liability">Liability (Loans / Credit cards)</option>
+              </select>
+            </div>
+            <div className="flex gap-3 sm:col-span-3">
+              <button
+                type="submit"
+                className="rounded-lg bg-primary px-4 py-2 text-sm font-semibold text-primary-foreground hover:bg-primary/90"
+              >
+                Create Account
+              </button>
+              <button
+                type="button"
+                onClick={() => setShowAddForm(false)}
+                className="rounded-lg border border-input px-4 py-2 text-sm font-semibold hover:bg-secondary"
+              >
+                Cancel
+              </button>
+            </div>
+          </form>
+        </Panel>
+      )}
+
+      {/* Transfer Funds Modal Form */}
+      {showTransferForm && (
+        <Panel title="Record Internal Fund Transfer (Contra)" className="mb-6">
+          <form onSubmit={handleTransfer} className="grid gap-4 p-6 sm:grid-cols-2">
+            <div className="space-y-1.5">
+              <label className="text-sm font-medium">From Account (Source Cr.) *</label>
+              <select
+                value={transfer.from_id}
+                onChange={(e) => setTransfer({ ...transfer, from_id: e.target.value })}
+                required
+                className="w-full rounded-lg border border-input bg-card px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-primary/20"
+              >
+                <option value="">-- Select Source Account --</option>
+                {assetAccounts.map((acc) => (
+                  <option key={acc.id} value={acc.id}>
+                    {acc.name} (Balance: ₹{acc.balance.toLocaleString()})
+                  </option>
+                ))}
+              </select>
+            </div>
+            <div className="space-y-1.5">
+              <label className="text-sm font-medium">To Account (Destination Dr.) *</label>
+              <select
+                value={transfer.to_id}
+                onChange={(e) => setTransfer({ ...transfer, to_id: e.target.value })}
+                required
+                className="w-full rounded-lg border border-input bg-card px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-primary/20"
+              >
+                <option value="">-- Select Destination Account --</option>
+                {assetAccounts.map((acc) => (
+                  <option key={acc.id} value={acc.id}>
+                    {acc.name} (Balance: ₹{acc.balance.toLocaleString()})
+                  </option>
+                ))}
+              </select>
+            </div>
+            <div className="space-y-1.5">
+              <label className="text-sm font-medium">Transfer Amount (INR) *</label>
+              <input
+                type="number"
+                placeholder="e.g. 50000"
+                value={transfer.amount}
+                onChange={(e) => setTransfer({ ...transfer, amount: e.target.value })}
+                required
+                className="w-full rounded-lg border border-input bg-card px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-primary/20"
+              />
+            </div>
+            <div className="space-y-1.5">
+              <label className="text-sm font-medium">Reference Code / Cheque No.</label>
+              <input
+                type="text"
+                placeholder="e.g. CHQ-88290 (auto-generated if empty)"
+                value={transfer.ref}
+                onChange={(e) => setTransfer({ ...transfer, ref: e.target.value })}
+                className="w-full rounded-lg border border-input bg-card px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-primary/20"
+              />
+            </div>
+            <div className="space-y-1.5 sm:col-span-2">
+              <label className="text-sm font-medium">Remarks / Description</label>
+              <textarea
+                placeholder="e.g. Transfer excess cash to HDFC Bank vault"
+                value={transfer.desc}
+                onChange={(e) => setTransfer({ ...transfer, desc: e.target.value })}
+                rows={2}
+                className="w-full rounded-lg border border-input bg-card px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-primary/20"
+              />
+            </div>
+            <div className="flex gap-3 sm:col-span-2">
+              <button
+                type="submit"
+                className="rounded-lg bg-primary px-4 py-2 text-sm font-semibold text-primary-foreground hover:bg-primary/90"
+              >
+                Execute Transfer
+              </button>
+              <button
+                type="button"
+                onClick={() => setShowTransferForm(false)}
+                className="rounded-lg border border-input px-4 py-2 text-sm font-semibold hover:bg-secondary"
+              >
+                Cancel
+              </button>
+            </div>
+          </form>
+        </Panel>
+      )}
+
+      {loading ? (
+        <div className="flex h-32 items-center justify-center rounded-xl border border-dashed border-border bg-card/60">
+          <p className="text-sm text-muted-foreground animate-pulse font-medium">Loading ledger accounts...</p>
+        </div>
+      ) : (
+        <>
+          {/* Account Balance Cards */}
+          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+            {assetAccounts.map((acc) => (
+              <div
+                key={acc.id}
+                className="relative overflow-hidden rounded-xl border border-border bg-card p-5 shadow-soft hover:shadow-card transition-all"
+              >
+                <div className="flex justify-between items-start mb-4">
+                  <div className="rounded-lg bg-primary/10 p-2 text-primary">
+                    <Wallet className="h-5 w-5" />
+                  </div>
+                  <span className="font-mono text-xs text-muted-foreground bg-secondary px-2.5 py-0.5 rounded-full font-semibold">
+                    {acc.code}
+                  </span>
+                </div>
+                <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">{acc.name}</p>
+                <h3 className="text-2xl font-bold mt-1 text-foreground">
+                  ₹{acc.balance.toLocaleString("en-IN", { minimumFractionDigits: 2 })}
+                </h3>
+                <div className="absolute right-0 bottom-0 translate-x-3 translate-y-3 opacity-5 pointer-events-none">
+                  <Wallet className="h-24 w-24" />
+                </div>
+              </div>
+            ))}
+          </div>
+
+          {/* Transfers History Panel */}
+          <Panel title="Fund Transfer Logs (Contra entries)">
+            {transfers.length === 0 ? (
+              <div className="py-8 text-center text-sm text-muted-foreground">
+                No recent transfer logs found. Use the "Transfer Funds" action to record movements.
+              </div>
+            ) : (
+              <div className="overflow-x-auto">
+                <table className="w-full text-left border-collapse">
+                  <thead>
+                    <tr className="border-b border-border text-xs font-semibold text-muted-foreground uppercase bg-secondary/30">
+                      <th className="py-3 px-4">Date</th>
+                      <th className="py-3 px-4">Reference</th>
+                      <th className="py-3 px-4">From Account</th>
+                      <th className="py-3 px-4">To Account</th>
+                      <th className="py-3 px-4">Remarks</th>
+                      <th className="py-3 px-4 text-right">Amount</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-border text-sm">
+                    {transfers.map((tx) => (
+                      <tr key={tx.id} className="hover:bg-secondary/10">
+                        <td className="py-3 px-4 text-muted-foreground">{new Date(tx.date).toLocaleDateString()}</td>
+                        <td className="py-3 px-4 font-mono font-semibold text-xs">{tx.ref}</td>
+                        <td className="py-3 px-4 text-red-600 font-medium">{tx.from}</td>
+                        <td className="py-3 px-4 text-green-600 font-medium">{tx.to}</td>
+                        <td className="py-3 px-4 text-muted-foreground max-w-xs truncate">{tx.description}</td>
+                        <td className="py-3 px-4 text-right font-bold text-foreground">₹{tx.amount.toLocaleString()}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </Panel>
+
+          {/* Chart of Accounts Full View */}
+          <Panel title="Company Ledgers (Full Chart of Accounts)">
+            <div className="overflow-x-auto">
+              <table className="w-full text-left border-collapse">
+                <thead>
+                  <tr className="border-b border-border text-xs font-semibold text-muted-foreground uppercase bg-secondary/30">
+                    <th className="py-3 px-4">Code</th>
+                    <th className="py-3 px-4">Ledger Name</th>
+                    <th className="py-3 px-4">Type</th>
+                    <th className="py-3 px-4 text-right">Current Balance</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-border text-sm">
+                  {accounts.map((acc) => (
+                    <tr key={acc.id} className="hover:bg-secondary/10">
+                      <td className="py-3 px-4 font-mono text-muted-foreground">{acc.code}</td>
+                      <td className="py-3 px-4 font-semibold text-foreground">{acc.name}</td>
+                      <td className="py-3 px-4">
+                        <StatusBadge
+                          label={acc.account_type}
+                          tone={
+                            acc.account_type === "asset"
+                              ? "success"
+                              : acc.account_type === "liability"
+                                ? "danger"
+                                : acc.account_type === "expense"
+                                  ? "warning"
+                                  : "info"
+                          }
+                        />
+                      </td>
+                      <td className="py-3 px-4 text-right font-mono font-semibold">
+                        ₹{acc.balance.toLocaleString("en-IN", { minimumFractionDigits: 2 })}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </Panel>
+        </>
+      )}
+    </div>
+  );
+}
+
+/* ── Landing Page Editor module ── */
+function LandingPageEditorModule() {
+  const session = useSession();
+  const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
+  const [settings, setSettings] = useState<any>({
+    hero_title: "",
+    hero_subtitle: "",
+    hero_image_url: "",
+    about_title: "",
+    about_text: "",
+    about_image_url: "",
+    products_data: [],
+    export_countries: [],
+  });
+
+  const [activeTab, setActiveTab] = useState<"hero" | "about" | "spices" | "countries">("hero");
+
+  // Local helper state for adding/editing spices
+  const [newSpice, setNewSpice] = useState({ name: "", desc: "", image_url: "" });
+  // Local helper state for adding countries
+  const [newCountry, setNewCountry] = useState("");
+
+  const loadData = async () => {
+    setLoading(true);
+    try {
+      const { data, error } = await supabase
+        .from("landing_page_settings")
+        .select("*")
+        .order("updated_at", { ascending: false })
+        .limit(1)
+        .maybeSingle();
+
+      if (error) throw error;
+      if (data) {
+        setSettings({
+          ...data,
+          products_data: data.products_data || [],
+          export_countries: data.export_countries || [],
+        });
+      }
+    } catch (err: any) {
+      toast.error(err.message || "Failed to load landing page settings");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    loadData();
+  }, []);
+
+  const handleSave = async () => {
+    setSaving(true);
+    const toastId = toast.loading("Saving landing page configuration...");
+    try {
+      const payload = {
+        hero_title: settings.hero_title,
+        hero_subtitle: settings.hero_subtitle,
+        hero_image_url: settings.hero_image_url,
+        about_title: settings.about_title,
+        about_text: settings.about_text,
+        about_image_url: settings.about_image_url,
+        products_data: settings.products_data,
+        export_countries: settings.export_countries,
+        updated_at: new Date().toISOString(),
+      };
+
+      const recordId = settings.id || "00000000-0000-0000-0000-000000000001";
+      const { error } = await supabase
+        .from("landing_page_settings")
+        .upsert({ id: recordId, ...payload });
+
+      if (error) throw error;
+      toast.dismiss(toastId);
+      toast.success("Landing page settings saved successfully!");
+      loadData();
+    } catch (err: any) {
+      toast.dismiss(toastId);
+      toast.error(err.message || "Failed to save settings");
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const handleImageUpload = (field: "hero_image_url" | "about_image_url" | "new_spice_image", file: File) => {
+    const reader = new FileReader();
+    reader.onloadend = () => {
+      const base64String = reader.result as string;
+      if (field === "new_spice_image") {
+        setNewSpice({ ...newSpice, image_url: base64String });
+      } else {
+        setSettings({ ...settings, [field]: base64String });
+      }
+    };
+    reader.readAsDataURL(file);
+  };
+
+  const addSpice = () => {
+    if (!newSpice.name || !newSpice.desc) {
+      return toast.error("Spice name and description are required");
+    }
+    const updatedSpices = [...settings.products_data, newSpice];
+    setSettings({ ...settings, products_data: updatedSpices });
+    setNewSpice({ name: "", desc: "", image_url: "" });
+    toast.success("Spice added to local list! Don't forget to click 'Save Changes'.");
+  };
+
+  const removeSpice = (index: number) => {
+    const updatedSpices = settings.products_data.filter((_: any, idx: number) => idx !== index);
+    setSettings({ ...settings, products_data: updatedSpices });
+    toast.info("Spice removed from local list.");
+  };
+
+  const addCountry = () => {
+    const c = newCountry.trim();
+    if (!c) return;
+    if (settings.export_countries.includes(c)) {
+      return toast.error("Country already exists in list");
+    }
+    const updatedCountries = [...settings.export_countries, c];
+    setSettings({ ...settings, export_countries: updatedCountries });
+    setNewCountry("");
+    toast.success("Country added to local list! Don't forget to click 'Save Changes'.");
+  };
+
+  const removeCountry = (c: string) => {
+    const updatedCountries = settings.export_countries.filter((item: string) => item !== c);
+    setSettings({ ...settings, export_countries: updatedCountries });
+    toast.info("Country removed from local list.");
+  };
+
+  const canManage = ["super-admin", "admin", "supervisor"].includes(session?.role || "");
+
+  if (!canManage) {
+    return (
+      <div className="space-y-6">
+        <PageHeader title="Landing Page Editor" subtitle="Access Denied" />
+        <Panel title="Unauthorized">
+          <p className="p-6 text-red-500 font-semibold">
+            You do not have the required permissions to modify the landing website settings. Please contact the administrator.
+          </p>
+        </Panel>
+      </div>
+    );
+  }
+
+  if (loading) {
+    return (
+      <div className="flex h-64 items-center justify-center rounded-xl border border-dashed border-border bg-card/60">
+        <p className="text-sm text-muted-foreground animate-pulse font-medium">Loading landing page configuration...</p>
+      </div>
+    );
+  }
+
+  const defaultSpiceImages = [turmeric, chilli, coriander, cumin, garam];
+
+  return (
+    <div className="space-y-6">
+      <PageHeader
+        title="Landing Page Editor"
+        subtitle="Manage home page content, photos, spices list, and export statistics"
+        action={
+          <button
+            onClick={handleSave}
+            disabled={saving}
+            className="inline-flex items-center gap-1.5 rounded-lg bg-primary px-4 py-2 text-sm font-semibold text-primary-foreground shadow-soft hover:bg-primary/90 transition-colors disabled:opacity-50"
+          >
+            {saving ? "Saving..." : "Save Changes"}
+          </button>
+        }
+      />
+
+      <div className="grid gap-6 lg:grid-cols-12">
+        {/* Editor (Left Column - 7cols) */}
+        <div className="lg:col-span-7 space-y-6">
+          <div className="flex gap-1 rounded-lg border border-border bg-card p-1">
+            {[
+              { id: "hero", label: "Hero Banner" },
+              { id: "about", label: "About Founder" },
+              { id: "spices", label: "Spices Catalog" },
+              { id: "countries", label: "Export Markets" },
+            ].map((tab) => (
+              <button
+                key={tab.id}
+                onClick={() => setActiveTab(tab.id as any)}
+                className={`flex-1 rounded-md px-3 py-2 text-sm font-medium transition-colors ${
+                  activeTab === tab.id
+                    ? "bg-primary text-primary-foreground"
+                    : "text-muted-foreground hover:bg-secondary"
+                }`}
+              >
+                {tab.label}
+              </button>
+            ))}
+          </div>
+
+          {activeTab === "hero" && (
+            <Panel title="Edit Hero Section (Home Main Title)">
+              <div className="p-6 space-y-6">
+                <div className="space-y-1.5">
+                  <label className="text-sm font-medium">Hero Main Title *</label>
+                  <input
+                    type="text"
+                    value={settings.hero_title}
+                    onChange={(e) => setSettings({ ...settings, hero_title: e.target.value })}
+                    required
+                    className="w-full rounded-lg border border-input bg-card px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-primary/20"
+                    placeholder="e.g. Pure Spices. Pure Trust."
+                  />
+                </div>
+
+                <div className="space-y-1.5">
+                  <label className="text-sm font-medium">Hero Subtitle / Description *</label>
+                  <textarea
+                    value={settings.hero_subtitle}
+                    onChange={(e) => setSettings({ ...settings, hero_subtitle: e.target.value })}
+                    required
+                    rows={3}
+                    className="w-full rounded-lg border border-input bg-card px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-primary/20"
+                    placeholder="Write a brief tagline for Agrozaar Foods..."
+                  />
+                </div>
+
+                <div className="space-y-2">
+                  <label className="text-sm font-medium">Hero Image Banner</label>
+                  <div className="flex flex-col sm:flex-row gap-4 items-start">
+                    <input
+                      type="file"
+                      accept="image/*"
+                      onChange={(e) => {
+                        const file = e.target.files?.[0];
+                        if (file) handleImageUpload("hero_image_url", file);
+                      }}
+                      className="text-xs"
+                    />
+                    <div className="relative rounded-lg overflow-hidden border border-border max-w-[240px]">
+                      <img
+                        src={settings.hero_image_url || heroImg}
+                        alt="Hero preview"
+                        className="w-full h-auto object-cover max-h-32"
+                      />
+                      <p className="text-[10px] text-muted-foreground text-center bg-secondary py-1">
+                        {settings.hero_image_url ? "Uploaded Custom Banner" : "Default Banner Asset"}
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </Panel>
+          )}
+
+          {activeTab === "about" && (
+            <Panel title="Edit About Section & Founder Bio">
+              <div className="p-6 space-y-6">
+                <div className="space-y-1.5">
+                  <label className="text-sm font-medium">About Section Title *</label>
+                  <input
+                    type="text"
+                    value={settings.about_title}
+                    onChange={(e) => setSettings({ ...settings, about_title: e.target.value })}
+                    required
+                    className="w-full rounded-lg border border-input bg-card px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-primary/20"
+                    placeholder="e.g. A growing name in the Indian spice industry"
+                  />
+                </div>
+
+                <div className="space-y-1.5">
+                  <label className="text-sm font-medium">Founder's Narrative Text *</label>
+                  <textarea
+                    value={settings.about_text}
+                    onChange={(e) => setSettings({ ...settings, about_text: e.target.value })}
+                    required
+                    rows={5}
+                    className="w-full rounded-lg border border-input bg-card px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-primary/20"
+                    placeholder="Write the company biography or founder's message..."
+                  />
+                </div>
+
+                <div className="space-y-2">
+                  <label className="text-sm font-medium">Founder Photo</label>
+                  <div className="flex flex-col sm:flex-row gap-4 items-start">
+                    <input
+                      type="file"
+                      accept="image/*"
+                      onChange={(e) => {
+                        const file = e.target.files?.[0];
+                        if (file) handleImageUpload("about_image_url", file);
+                      }}
+                      className="text-xs"
+                    />
+                    <div className="relative rounded-lg overflow-hidden border border-border max-w-[200px]">
+                      <img
+                        src={settings.about_image_url || founder.url}
+                        alt="About founder preview"
+                        className="w-full h-auto object-cover max-h-40"
+                      />
+                      <p className="text-[10px] text-muted-foreground text-center bg-secondary py-1">
+                        {settings.about_image_url ? "Uploaded Photo" : "Default Founder Asset"}
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </Panel>
+          )}
+
+          {activeTab === "spices" && (
+            <div className="space-y-6">
+              <Panel title="Add Spice to Catalog (Local list)">
+                <div className="p-6 grid gap-4 sm:grid-cols-2">
+                  <div className="space-y-1.5">
+                    <label className="text-sm font-medium">Spice / Product Name *</label>
+                    <input
+                      type="text"
+                      placeholder="e.g. Ginger Powder"
+                      value={newSpice.name}
+                      onChange={(e) => setNewSpice({ ...newSpice, name: e.target.value })}
+                      className="w-full rounded-lg border border-input bg-card px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-primary/20"
+                    />
+                  </div>
+                  <div className="space-y-1.5">
+                    <label className="text-sm font-medium">Short Description *</label>
+                    <input
+                      type="text"
+                      placeholder="e.g. Pure dried ginger milled to fine aromatic powder"
+                      value={newSpice.desc}
+                      onChange={(e) => setNewSpice({ ...newSpice, desc: e.target.value })}
+                      className="w-full rounded-lg border border-input bg-card px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-primary/20"
+                    />
+                  </div>
+                  <div className="space-y-2 sm:col-span-2">
+                    <label className="text-sm font-medium">Product Photo (Optional)</label>
+                    <div className="flex flex-col sm:flex-row gap-4 items-start">
+                      <input
+                        type="file"
+                        accept="image/*"
+                        onChange={(e) => {
+                          const file = e.target.files?.[0];
+                          if (file) handleImageUpload("new_spice_image", file);
+                        }}
+                        className="text-xs"
+                      />
+                      {newSpice.image_url && (
+                        <div className="relative rounded-lg overflow-hidden border border-border max-w-[150px]">
+                          <img src={newSpice.image_url} alt="New spice preview" className="w-full h-auto object-cover max-h-24" />
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                  <div className="sm:col-span-2">
+                    <button
+                      type="button"
+                      onClick={addSpice}
+                      className="inline-flex items-center gap-1.5 rounded-lg bg-primary px-4 py-2 text-sm font-semibold text-primary-foreground shadow-soft hover:bg-primary/90 transition-colors"
+                    >
+                      <Plus className="h-4 w-4" /> Add Spice
+                    </button>
+                  </div>
+                </div>
+              </Panel>
+
+              <Panel title="Current Spices Catalog Preview">
+                {settings.products_data.length === 0 ? (
+                  <div className="p-8 text-center text-sm text-muted-foreground">
+                    No spices in the list. Default list will be displayed on the landing page.
+                  </div>
+                ) : (
+                  <div className="p-6 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+                    {settings.products_data.map((spice: any, idx: number) => (
+                      <div key={idx} className="relative rounded-xl border border-border bg-card p-4 flex flex-col justify-between shadow-soft">
+                        <button
+                          onClick={() => removeSpice(idx)}
+                          className="absolute top-2 right-2 text-red-500 hover:text-red-700 bg-secondary p-1 rounded-full"
+                          title="Remove spice"
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </button>
+                        <div>
+                          <div className="rounded-lg overflow-hidden mb-3 border border-border h-24 bg-secondary">
+                            <img
+                              src={spice.image_url || defaultSpiceImages[idx % defaultSpiceImages.length]}
+                              alt={spice.name}
+                              className="w-full h-full object-cover"
+                            />
+                          </div>
+                          <h4 className="font-heading font-bold text-spice-brown text-base">{spice.name}</h4>
+                          <p className="text-xs text-muted-foreground mt-1.5 line-clamp-3">{spice.desc}</p>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </Panel>
+            </div>
+          )}
+
+          {activeTab === "countries" && (
+            <div className="space-y-6">
+              <Panel title="Add Export Market / Target Country">
+                <div className="p-6 flex gap-3">
+                  <input
+                    type="text"
+                    placeholder="e.g. New Zealand"
+                    value={newCountry}
+                    onChange={(e) => setNewCountry(e.target.value)}
+                    className="flex-1 rounded-lg border border-input bg-card px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-primary/20"
+                  />
+                  <button
+                    type="button"
+                    onClick={addCountry}
+                    className="inline-flex items-center gap-1.5 rounded-lg bg-primary px-4 py-2 text-sm font-semibold text-primary-foreground shadow-soft hover:bg-primary/90 transition-colors"
+                  >
+                    <Plus className="h-4 w-4" /> Add Country
+                  </button>
+                </div>
+              </Panel>
+
+              <Panel title="Current Export Markets">
+                {settings.export_countries.length === 0 ? (
+                  <div className="p-8 text-center text-sm text-muted-foreground">
+                    No custom countries configured. Default list will be displayed.
+                  </div>
+                ) : (
+                  <div className="p-6 flex flex-wrap gap-2">
+                    {settings.export_countries.map((c: string) => (
+                      <span
+                        key={c}
+                        className="inline-flex items-center gap-1.5 rounded-full border border-border bg-card pl-4 pr-2.5 py-1 text-sm font-medium text-foreground"
+                      >
+                        {c}
+                        <button
+                          onClick={() => removeCountry(c)}
+                          className="text-muted-foreground hover:text-red-500 rounded-full hover:bg-secondary p-0.5"
+                        >
+                          <X className="h-3 w-3" />
+                        </button>
+                      </span>
+                    ))}
+                  </div>
+                )}
+              </Panel>
+            </div>
+          )}
+        </div>
+
+        {/* Live Simulator Panel (Right Column - 5cols) */}
+        <div className="lg:col-span-5 hidden lg:block sticky top-6">
+          <div className="rounded-2xl border border-border bg-card p-6 shadow-soft">
+            <h3 className="font-heading font-bold text-xs uppercase tracking-wider text-muted-foreground mb-4 text-center">
+              Live Mobile Simulator Preview
+            </h3>
+
+            {/* Phone Body */}
+            <div className="relative mx-auto w-[310px] h-[580px] rounded-[36px] border-[8px] border-slate-800 bg-background shadow-2xl overflow-hidden flex flex-col">
+              {/* Notch */}
+              <div className="absolute top-0 left-1/2 -translate-x-1/2 w-28 h-4 bg-slate-800 rounded-b-xl z-50 flex items-center justify-center">
+                <span className="w-8 h-1 bg-slate-900 rounded-full mb-1" />
+              </div>
+
+              {/* Mobile screen content */}
+              <div className="flex-1 overflow-y-auto pt-6 text-[10px] leading-tight select-none animate-fade-in">
+                {/* Navbar mockup */}
+                <div className="border-b border-border bg-card px-3 py-2 flex justify-between items-center">
+                  <span className="font-heading font-black text-xs text-primary">AVIRAAJ</span>
+                  <span className="text-[8px] bg-secondary px-1.5 py-0.5 rounded text-muted-foreground">MENU</span>
+                </div>
+
+                {/* Hero section mockup */}
+                <div className="bg-secondary/20 p-4 space-y-3 relative overflow-hidden">
+                  <h4 className="font-heading font-bold text-xs text-spice-brown leading-tight">
+                    {settings.hero_title || "Pure Spices. Pure Trust."}
+                  </h4>
+                  <p className="text-[8px] text-muted-foreground leading-normal">
+                    {settings.hero_subtitle || "Premium quality spices for B2B, retail, distributors..."}
+                  </p>
+                  <img
+                    src={settings.hero_image_url || heroImg}
+                    alt="Hero banner"
+                    className="w-full h-24 object-cover rounded-lg border border-border"
+                  />
+                </div>
+
+                {/* About section mockup */}
+                <div className="p-4 space-y-3">
+                  <h4 className="font-heading font-bold text-xs text-spice-brown leading-tight">
+                    {settings.about_title || "A growing name in the Indian spice industry"}
+                  </h4>
+                  <p className="text-[8px] text-muted-foreground leading-normal line-clamp-4">
+                    {settings.about_text || "Agrozaar Foods LLP is a spice manufacturing..."}
+                  </p>
+                  <img
+                    src={settings.about_image_url || founder.url}
+                    alt="Founder narrative"
+                    className="w-full h-28 object-cover rounded-lg border border-border"
+                  />
+                </div>
+
+                {/* Products section mockup */}
+                <div className="bg-secondary/10 p-4 space-y-3">
+                  <h4 className="font-heading font-bold text-xs text-spice-brown leading-tight">Our Products</h4>
+                  <div className="grid grid-cols-2 gap-2">
+                    {((settings.products_data && settings.products_data.length > 0) ? settings.products_data : [
+                      { name: "Turmeric Powder" },
+                      { name: "Chilli Powder" },
+                      { name: "Coriander Powder" },
+                      { name: "Cumin Powder" }
+                    ]).slice(0, 4).map((spice: any, idx: number) => (
+                      <div key={idx} className="bg-card border border-border p-2 rounded-lg flex flex-col justify-between">
+                        <img
+                          src={spice.image_url || defaultSpiceImages[idx % defaultSpiceImages.length]}
+                          alt="Spice product"
+                          className="w-full h-12 object-cover rounded mb-1"
+                        />
+                        <span className="font-bold text-[8px] text-foreground truncate">{spice.name}</span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+
+                {/* Export countries mockup */}
+                <div className="p-4 bg-spice-brown text-white space-y-2">
+                  <h4 className="font-heading font-bold text-[10px]">Export Markets</h4>
+                  <div className="flex flex-wrap gap-1">
+                    {((settings.export_countries && settings.export_countries.length > 0) ? settings.export_countries : ["UAE", "USA", "UK", "Canada"]).slice(0, 8).map((c: string) => (
+                      <span key={c} className="text-[7px] border border-white/20 bg-white/5 px-1.5 py-0.5 rounded-full">
+                        {c}
+                      </span>
+                    ))}
+                  </div>
+                </div>
+
+                {/* Footer mockup */}
+                <div className="bg-slate-900 text-white/40 p-4 text-center text-[6px]">
+                  © 2026 Agrozaar Foods LLP. All Rights Reserved.
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
   );
 }
 
@@ -2227,6 +3325,8 @@ export default function ModulePage() {
       return <UserManagementModule />;
     case "/app/settings":
       return <SettingsModule />;
+    case "/app/landing-page":
+      return <LandingPageEditorModule />;
 
     // ── Accounts & Billing ──
     case "/app/accounts":

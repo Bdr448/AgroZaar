@@ -8,19 +8,29 @@ const points = [
   "Hygiene, consistency and customer satisfaction in every batch",
 ];
 
-export function About() {
+interface AboutProps {
+  title?: string;
+  text?: string;
+  imageUrl?: string;
+}
+
+export function About({ title, text, imageUrl }: AboutProps) {
+  const displayTitle = title || "A growing name in the Indian spice industry";
+  const displayConfigText = text || "Agrozaar Foods LLP is a spice manufacturing and export company committed to delivering high-quality, pure and authentic spices under its flagship brand Aviraaj. We bring the true taste of Indian spices to every kitchen — domestic and international.";
+  const displayImage = imageUrl || founder.url;
+
   return (
-    <section id="about" className="section-pad">
-      <div className="container-x grid items-center gap-14 lg:grid-cols-2">
-        <div className="relative order-2 lg:order-1">
+    <section id="about" className="py-6 md:py-12 bg-background">
+      <div className="container-x grid items-center gap-6 lg:grid-cols-2 lg:gap-12">
+        <div className="relative order-2 lg:order-1 hidden md:block">
           <div className="overflow-hidden rounded-3xl border border-border shadow-card">
             <img
-              src={founder.url}
+              src={displayImage}
               alt="Sharad Patel, Founder & CEO of Agrozaar Foods LLP"
               width={800}
               height={800}
               loading="lazy"
-              className="aspect-[4/5] w-full object-cover"
+              className="aspect-[4/5] w-full object-cover max-h-[260px] md:max-h-[500px]"
             />
           </div>
           <div className="absolute bottom-5 left-5 right-5 rounded-2xl border border-border bg-card/95 px-6 py-4 shadow-card backdrop-blur">
@@ -33,14 +43,11 @@ export function About() {
           <span className="text-sm font-semibold uppercase tracking-[0.18em] text-primary">
             About the Company
           </span>
-          <h2 className="mt-4 font-heading text-4xl font-extrabold leading-tight text-spice-brown text-balance">
-            A growing name in the Indian spice industry
+          <h2 className="mt-4 font-heading text-3xl md:text-4xl font-extrabold leading-tight text-spice-brown text-balance">
+            {displayTitle}
           </h2>
-          <p className="mt-5 text-lg leading-relaxed text-muted-foreground">
-            Agrozaar Foods LLP is a spice manufacturing and export company committed to delivering
-            high-quality, pure and authentic spices under its flagship brand{" "}
-            <span className="font-semibold text-foreground">Aviraaj</span>. We bring the true taste
-            of Indian spices to every kitchen — domestic and international.
+          <p className="mt-5 text-base md:text-lg leading-relaxed text-muted-foreground">
+            {displayConfigText}
           </p>
 
           <ul className="mt-8 space-y-4">
@@ -60,9 +67,9 @@ export function About() {
               ["100%", "Pure & Natural"],
               ["Global", "Export Ready"],
             ].map(([n, l]) => (
-              <div key={l} className="rounded-2xl border border-border bg-card p-5 shadow-soft">
-                <p className="font-heading text-2xl font-extrabold text-primary">{n}</p>
-                <p className="mt-1 text-xs font-medium text-muted-foreground">{l}</p>
+              <div key={l} className="rounded-xl border border-border bg-card p-3 shadow-soft text-center">
+                <p className="font-heading text-lg font-extrabold text-primary">{n}</p>
+                <p className="mt-0.5 text-[10px] font-medium text-muted-foreground">{l}</p>
               </div>
             ))}
           </div>

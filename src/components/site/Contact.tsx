@@ -44,35 +44,35 @@ export function Contact() {
   };
 
   return (
-    <section id="contact" className="section-pad bg-secondary/40">
-      <div className="container-x grid gap-12 lg:grid-cols-2">
-        <div>
+    <section id="contact" className="py-6 md:py-12 bg-secondary/40">
+      <div className="container-x grid gap-6 lg:grid-cols-2 lg:gap-12">
+        <div className="w-full min-w-0">
           <span className="text-sm font-semibold uppercase tracking-[0.18em] text-primary">
             Get in Touch
           </span>
-          <h2 className="mt-4 font-heading text-4xl font-extrabold text-spice-brown text-balance">
+          <h2 className="mt-4 font-heading text-3xl md:text-4xl font-extrabold text-spice-brown text-balance">
             Let's discuss your spice requirement
           </h2>
-          <p className="mt-4 text-muted-foreground">
+          <p className="mt-4 text-base text-muted-foreground">
             Whether you're a distributor, retailer or export buyer, our team will get back to you
             with a tailored proposal.
           </p>
 
-          <div className="mt-9 grid gap-4 sm:grid-cols-2">
+          <div className="mt-6 flex overflow-x-auto md:grid md:grid-cols-2 gap-4 pb-4 md:pb-0 scrollbar-none snap-x snap-mandatory">
             {details.map((d) => (
               <a
                 key={d.label}
                 href={d.href ?? "#"}
-                className="flex items-start gap-4 rounded-2xl border border-border bg-card p-5 shadow-soft transition-shadow hover:shadow-card"
+                className="flex items-start gap-3 rounded-xl border border-border bg-card p-4 shadow-soft transition-shadow hover:shadow-card min-w-[240px] sm:min-w-[280px] md:min-w-0 snap-start shrink-0 md:shrink"
               >
-                <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-primary/10 text-primary">
+                <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-primary/10 text-primary">
                   <d.icon className="h-5 w-5" />
                 </span>
                 <div>
-                  <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                  <p className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
                     {d.label}
                   </p>
-                  <p className="mt-1 font-medium text-foreground">{d.value}</p>
+                  <p className="mt-0.5 text-xs font-semibold text-foreground">{d.value}</p>
                 </div>
               </a>
             ))}
@@ -82,46 +82,54 @@ export function Contact() {
             href="https://wa.me/918128853311"
             target="_blank"
             rel="noreferrer"
-            className="mt-6 inline-flex items-center gap-2 rounded-lg bg-accent px-6 py-3 text-sm font-semibold text-accent-foreground transition-transform hover:-translate-y-0.5"
+            className="mt-4 inline-flex items-center gap-2 rounded-lg bg-accent px-5 py-2.5 text-sm font-semibold text-accent-foreground transition-transform hover:-translate-y-0.5"
           >
-            <MessageCircle className="h-5 w-5" /> Chat on WhatsApp
+            <MessageCircle className="h-4 w-4" /> Chat on WhatsApp
           </a>
         </div>
 
         <form
           onSubmit={onSubmit}
-          className="rounded-3xl border border-border bg-card p-7 shadow-card md:p-9"
+          className="w-full min-w-0 rounded-2xl border border-border bg-card p-4 sm:p-6 md:p-7 shadow-card flex flex-col text-left"
         >
-          <h3 className="font-heading text-xl font-bold text-spice-brown">Send an Inquiry</h3>
-          <div className="mt-6 grid gap-4">
-            <div className="grid gap-4 sm:grid-cols-2">
-              <Field label="Full Name" name="name" placeholder="Your name" />
-              <Field label="Company" name="company" placeholder="Company name" required={false} />
+          <h3 className="font-heading text-base sm:text-lg font-bold text-spice-brown text-left">Send an Inquiry</h3>
+          <div className="mt-3 sm:mt-4 flex flex-col gap-2.5 sm:gap-3">
+            <div className="flex flex-col sm:flex-row gap-2.5 sm:gap-3">
+              <div className="flex-1">
+                <Field label="Full Name" name="name" placeholder="Your name" />
+              </div>
+              <div className="flex-1">
+                <Field label="Company" name="company" placeholder="Company name" required={false} />
+              </div>
             </div>
-            <div className="grid gap-4 sm:grid-cols-2">
-              <Field label="Email" name="email" type="email" placeholder="you@email.com" />
-              <Field label="Phone" name="phone" placeholder="+91 ..." />
+            <div className="flex flex-col sm:flex-row gap-2.5 sm:gap-3">
+              <div className="flex-1">
+                <Field label="Email" name="email" type="email" placeholder="you@email.com" />
+              </div>
+              <div className="flex-1">
+                <Field label="Phone" name="phone" placeholder="+91 ..." />
+              </div>
             </div>
-            <div>
-              <label className="text-sm font-medium text-foreground/80" htmlFor="message">
+            <div className="flex flex-col">
+              <label className="text-xs sm:text-sm font-medium text-foreground/80 text-left" htmlFor="message">
                 Requirement
               </label>
               <textarea
                 id="message"
                 name="message"
-                rows={4}
+                rows={3}
                 required
                 placeholder="Tell us about the products and quantities you need..."
-                className="mt-1.5 w-full resize-none rounded-lg border border-input bg-background px-4 py-2.5 text-sm outline-none transition-colors focus:border-primary focus:ring-2 focus:ring-primary/20"
+                className="mt-1 w-full resize-none rounded-lg border border-input bg-background px-3 py-1.5 sm:px-4 sm:py-2 text-xs sm:text-sm outline-none transition-colors focus:border-primary focus:ring-2 focus:ring-primary/20 text-left"
               />
             </div>
             <button
               type="submit"
-              className="inline-flex items-center justify-center gap-2 rounded-lg bg-primary px-6 py-3 text-sm font-semibold text-primary-foreground shadow-glow transition-transform hover:-translate-y-0.5"
+              className="inline-flex items-center justify-center gap-2 rounded-lg bg-primary px-5 py-2 sm:py-2.5 text-xs sm:text-sm font-semibold text-primary-foreground shadow-glow transition-transform hover:-translate-y-0.5 cursor-pointer"
             >
-              <Send className="h-4 w-4" /> {sent ? "Inquiry Sent — Thank You!" : "Submit Inquiry"}
+              <Send className="h-3.5 w-3.5" /> {sent ? "Inquiry Sent — Thank You!" : "Submit Inquiry"}
             </button>
-            {sent && <p className="text-sm text-accent">We'll get back to you shortly.</p>}
+            {sent && <p className="text-xs text-accent text-left">We'll get back to you shortly.</p>}
           </div>
         </form>
       </div>
@@ -143,8 +151,8 @@ function Field({
   required?: boolean;
 }) {
   return (
-    <div>
-      <label className="text-sm font-medium text-foreground/80" htmlFor={name}>
+    <div className="flex flex-col">
+      <label className="text-xs sm:text-sm font-medium text-foreground/80 text-left" htmlFor={name}>
         {label}
       </label>
       <input
@@ -153,7 +161,7 @@ function Field({
         type={type}
         required={required}
         placeholder={placeholder}
-        className="mt-1.5 w-full rounded-lg border border-input bg-background px-4 py-2.5 text-sm outline-none transition-colors focus:border-primary focus:ring-2 focus:ring-primary/20"
+        className="mt-1 w-full rounded-lg border border-input bg-background px-3 py-1.5 sm:px-4 sm:py-2.5 text-xs sm:text-sm outline-none transition-colors focus:border-primary focus:ring-2 focus:ring-primary/20 text-left"
       />
     </div>
   );

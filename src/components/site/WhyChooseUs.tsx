@@ -46,17 +46,17 @@ export function WhyChooseUs() {
           </h2>
         </div>
 
-        <div className="mt-14 grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
+        <div className="mt-8 md:mt-14 grid grid-cols-2 lg:grid-cols-3 gap-3 md:gap-6">
           {items.map((it) => (
             <div
               key={it.title}
-              className="rounded-2xl border border-border bg-card p-7 shadow-soft transition-shadow hover:shadow-card"
+              className="rounded-xl md:rounded-2xl border border-border bg-card p-4 md:p-7 shadow-soft transition-shadow hover:shadow-card"
             >
-              <span className="flex h-12 w-12 items-center justify-center rounded-xl bg-primary/10 text-primary">
-                <it.icon className="h-6 w-6" />
+              <span className="flex h-8 w-8 md:h-12 md:w-12 items-center justify-center rounded-lg md:rounded-xl bg-primary/10 text-primary">
+                <it.icon className="h-4 w-4 md:h-6 md:w-6" />
               </span>
-              <h3 className="mt-5 font-heading text-lg font-bold text-spice-brown">{it.title}</h3>
-              <p className="mt-2 text-sm leading-relaxed text-muted-foreground">{it.desc}</p>
+              <h3 className="mt-3 md:mt-5 font-heading text-sm md:text-lg font-bold text-spice-brown">{it.title}</h3>
+              <p className="mt-1 md:mt-2 text-[10px] md:text-sm leading-relaxed text-muted-foreground">{it.desc}</p>
             </div>
           ))}
         </div>

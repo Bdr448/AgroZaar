@@ -1,9 +1,11 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { CreditCard, Plus, Search, Filter, Download, X, Trash2, PlusCircle } from "lucide-react";
 import { useSession } from "@/lib/erp/auth";
 import type { RoleId } from "@/lib/erp/auth";
+import { toast } from "sonner"; // Let's make sure toast is imported in case we need it, wait it is imported or not? We can use alert or toast. Let's import it.
 
+// Wait, let's keep Route definition at the top
 export const Route = createFileRoute("/app/billing")({
   component: BillingPage,
 });
@@ -41,16 +43,24 @@ interface Invoice {
 const ADMIN_ROLES: RoleId[] = ["super-admin", "admin"];
 const canCreate = (role: RoleId) => ADMIN_ROLES.includes(role);
 
-const subtotal = (items: LineItem[]) => items.reduce((s, i) => s + i.qty * i.rate, 0);
+
+const subtotal = (items: LineItem[]) =>
+  items.reduce((s, i) => {
+    const qty = Number(i.qty) || 0;
+    const rate = Number(i.rate) || 0;
+    return s + qty * rate;
+  }, 0);
+
 const calcInvoice = (inv: Invoice) => {
   // Always coerce to number — form inputs can leave these as strings
   const discPct = Number(inv.discount) || 0;
   const taxPct = Number(inv.taxRate) || 0;
-  const sub = subtotal(inv.items);
-  const discAmt = (sub * discPct) / 100;
-  const taxable = sub - discAmt;
-  const taxAmt = (taxable * taxPct) / 100;
-  return { sub, discAmt, taxable, taxAmt, total: taxable + taxAmt };
+  const sub = Math.round(subtotal(inv.items) * 100) / 100;
+  const discAmt = Math.round(((sub * discPct) / 100) * 100) / 100;
+  const taxable = Math.round((sub - discAmt) * 100) / 100;
+  const taxAmt = Math.round(((taxable * taxPct) / 100) * 100) / 100;
+  const total = Math.round((taxable + taxAmt) * 100) / 100;
+  return { sub, discAmt, taxable, taxAmt, total };
 };
 
 // UI formatter — uses Rupee symbol, fine for HTML
@@ -69,7 +79,7 @@ const STATUS_STYLE: Record<string, string> = {
 };
 
 /* ─── PDF colours (Agrozaar brand) ──────────────────────── */
-const BRAND = { r: 232, g: 155, b: 0 }; // turmeric #E89B00
+const BRAND = { r: 37, g: 99, b: 235 }; // royal blue #2563EB
 const DARK = { r: 31, g: 31, b: 31 };
 const LIGHT = { r: 250, g: 248, b: 245 };
 
@@ -84,44 +94,41 @@ async function downloadInvoicePDF(inv: Invoice, role: RoleId) {
   const W = doc.internal.pageSize.getWidth();
   const { sub, discAmt, taxable, taxAmt, total } = calcInvoice(inv);
 
-  // ── Background header band ──
-  doc.setFillColor(DARK.r, DARK.g, DARK.b);
-  doc.rect(0, 0, W, 110, "F");
-
-  // ── Brand accent bar ──
+  // ── Print-Friendly Header (No dark background band) ──
   doc.setFillColor(BRAND.r, BRAND.g, BRAND.b);
-  doc.rect(0, 110, W, 5, "F");
+  doc.rect(0, 0, W, 8, "F"); // Small brand color bar at the top edge
 
   // ── Company name ──
-  doc.setTextColor(255, 255, 255);
+  doc.setTextColor(30, 41, 59); // slate-800
   doc.setFont("helvetica", "bold");
-  doc.setFontSize(26);
-  doc.text("AGROZAAR FOODS LLP", 40, 52);
+  doc.setFontSize(24);
+  doc.text("AGROZAAR FOODS LLP", 40, 46);
 
   doc.setFont("helvetica", "normal");
   doc.setFontSize(9);
-  doc.setTextColor(200, 195, 188);
-  doc.text("Premium Spices & Food Products", 40, 67);
-  doc.text("GSTIN: 24ABCDE1234F1Z5  |  FSSAI: 10023012000001", 40, 80);
+  doc.setTextColor(71, 85, 105); // slate-600
+  doc.text("Premium Spices & Food Products", 40, 60);
+  doc.text("GSTIN: 24ABCDE1234F1Z5  |  FSSAI: 10023012000001", 40, 73);
   doc.text(
     "Village Deesa, Banaskantha, Gujarat – 385535  |  info@agrozaar.in  |  +91 98765 43210",
     40,
-    93,
+    86,
   );
 
-  // ── INVOICE badge (right) ──
-  doc.setFillColor(BRAND.r, BRAND.g, BRAND.b);
-  doc.roundedRect(W - 155, 28, 115, 38, 4, 4, "F");
-  doc.setTextColor(DARK.r, DARK.g, DARK.b);
+  // ── INVOICE badge (right-aligned border badge) ──
+  doc.setDrawColor(BRAND.r, BRAND.g, BRAND.b);
+  doc.setLineWidth(1.5);
+  doc.roundedRect(W - 155, 28, 115, 38, 4, 4, "D");
+  doc.setTextColor(BRAND.r, BRAND.g, BRAND.b);
   doc.setFont("helvetica", "bold");
-  doc.setFontSize(18);
-  doc.text("INVOICE", W - 97, 52, { align: "center" });
+  doc.setFontSize(14);
+  doc.text("TAX INVOICE", W - 97, 52, { align: "center" });
 
   // ── Meta block ──
   let y = 130;
   doc.setFont("helvetica", "normal");
   doc.setFontSize(9);
-  doc.setTextColor(DARK.r, DARK.g, DARK.b);
+  doc.setTextColor(30, 41, 59);
 
   const metaLeft = [
     ["Invoice No.", inv.id],
@@ -132,17 +139,19 @@ async function downloadInvoicePDF(inv: Invoice, role: RoleId) {
   ];
   metaLeft.forEach(([label, val], i) => {
     doc.setFont("helvetica", "bold");
-    doc.setTextColor(120, 100, 60);
+    doc.setTextColor(71, 85, 105); // slate-600
     doc.text(label + ":", 40, y + i * 16);
     doc.setFont("helvetica", "normal");
-    doc.setTextColor(DARK.r, DARK.g, DARK.b);
+    doc.setTextColor(30, 41, 59); // slate-800
     doc.text(val, 145, y + i * 16);
   });
 
   // ── Bill To ──
   const rightX = W / 2 + 20;
-  doc.setFillColor(LIGHT.r, LIGHT.g, LIGHT.b);
-  doc.roundedRect(rightX - 10, y - 14, W - rightX, 95, 4, 4, "F");
+  doc.setFillColor(248, 250, 252); // slate-50
+  doc.setDrawColor(226, 232, 240); // slate-200
+  doc.setLineWidth(1);
+  doc.roundedRect(rightX - 10, y - 14, W - rightX, 95, 4, 4, "FD");
 
   doc.setFont("helvetica", "bold");
   doc.setFontSize(8);
@@ -151,12 +160,12 @@ async function downloadInvoicePDF(inv: Invoice, role: RoleId) {
 
   doc.setFont("helvetica", "bold");
   doc.setFontSize(11);
-  doc.setTextColor(DARK.r, DARK.g, DARK.b);
+  doc.setTextColor(30, 41, 59);
   doc.text(inv.customerName, rightX, y + 14);
 
   doc.setFont("helvetica", "normal");
   doc.setFontSize(9);
-  doc.setTextColor(80, 70, 60);
+  doc.setTextColor(71, 85, 105);
   const addrLines = doc.splitTextToSize(inv.customerAddress, W - rightX - 20);
   doc.text(addrLines, rightX, y + 28);
   let billY = y + 28 + addrLines.length * 12;
@@ -180,13 +189,13 @@ async function downloadInvoicePDF(inv: Invoice, role: RoleId) {
       fmtPdf(it.qty * it.rate),
     ]),
     headStyles: {
-      fillColor: [DARK.r, DARK.g, DARK.b],
-      textColor: [BRAND.r, BRAND.g, BRAND.b],
+      fillColor: [37, 99, 235], // royal blue
+      textColor: [255, 255, 255],
       fontStyle: "bold",
       fontSize: 9,
     },
-    bodyStyles: { fontSize: 9, textColor: [DARK.r, DARK.g, DARK.b] },
-    alternateRowStyles: { fillColor: [LIGHT.r, LIGHT.g, LIGHT.b] },
+    bodyStyles: { fontSize: 9, textColor: [30, 41, 59] },
+    alternateRowStyles: { fillColor: [248, 250, 252] },
     columnStyles: {
       0: { cellWidth: 25, halign: "center" },
       2: { cellWidth: 40, halign: "right" },
@@ -196,7 +205,7 @@ async function downloadInvoicePDF(inv: Invoice, role: RoleId) {
     },
     margin: { left: 40, right: 40 },
     tableLineWidth: 0.3,
-    tableLineColor: [220, 210, 195],
+    tableLineColor: [226, 232, 240],
   });
 
   // ── Totals block ──
@@ -224,16 +233,16 @@ async function downloadInvoicePDF(inv: Invoice, role: RoleId) {
     const isTotal = label === "TOTAL";
 
     if (isTotal) {
-      // Banner spans from LABEL_X - padding to VALUE_X + padding, fully inside margins
+      // Light blue accent row for grand total (print-friendly highlight)
       const bannerX = LABEL_X - 8;
       const bannerW = VALUE_X - LABEL_X + 16;
-      doc.setFillColor(DARK.r, DARK.g, DARK.b);
+      doc.setFillColor(219, 234, 254); // blue-100
       doc.roundedRect(bannerX, rowY - 14, bannerW, 20, 3, 3, "F");
-      doc.setTextColor(BRAND.r, BRAND.g, BRAND.b);
+      doc.setTextColor(30, 58, 138); // blue-900
       doc.setFont("helvetica", "bold");
       doc.setFontSize(10);
     } else {
-      doc.setTextColor(80, 70, 60);
+      doc.setTextColor(71, 85, 105);
       doc.setFont("helvetica", "normal");
       doc.setFontSize(9);
     }
@@ -244,15 +253,16 @@ async function downloadInvoicePDF(inv: Invoice, role: RoleId) {
   // ── Bank details (accountant/admin only) ──
   if (["super-admin", "admin", "accountant"].includes(role) && inv.bankDetails) {
     const bankY = finalY + rows.length * ROW_H + 20;
-    doc.setFillColor(LIGHT.r, LIGHT.g, LIGHT.b);
-    doc.roundedRect(40, bankY - 14, (W - 80) / 2, 60, 4, 4, "F");
+    doc.setFillColor(248, 250, 252);
+    doc.setDrawColor(226, 232, 240);
+    doc.roundedRect(40, bankY - 14, (W - 80) / 2, 60, 4, 4, "FD");
     doc.setFont("helvetica", "bold");
     doc.setFontSize(8);
     doc.setTextColor(BRAND.r, BRAND.g, BRAND.b);
     doc.text("BANK / PAYMENT DETAILS", 50, bankY);
     doc.setFont("helvetica", "normal");
     doc.setFontSize(8.5);
-    doc.setTextColor(DARK.r, DARK.g, DARK.b);
+    doc.setTextColor(30, 41, 59);
     const bankLines = doc.splitTextToSize(inv.bankDetails, (W - 80) / 2 - 20);
     doc.text(bankLines, 50, bankY + 14);
   }
@@ -268,24 +278,24 @@ async function downloadInvoicePDF(inv: Invoice, role: RoleId) {
     doc.text("NOTES", noteX, notesY);
     doc.setFont("helvetica", "normal");
     doc.setFontSize(8.5);
-    doc.setTextColor(80, 70, 60);
+    doc.setTextColor(71, 85, 105);
     const noteLines = doc.splitTextToSize(inv.notes, noteW);
     doc.text(noteLines, noteX, notesY + 14);
   }
 
-  // ── Footer ──
+  // ── Print-Friendly Footer (Clean separator line instead of solid dark band) ──
   const pageH = doc.internal.pageSize.getHeight();
-  doc.setFillColor(DARK.r, DARK.g, DARK.b);
-  doc.rect(0, pageH - 32, W, 32, "F");
-  doc.setFillColor(BRAND.r, BRAND.g, BRAND.b);
-  doc.rect(0, pageH - 32, W, 3, "F");
+  doc.setDrawColor(226, 232, 240);
+  doc.setLineWidth(1);
+  doc.line(40, pageH - 45, W - 40, pageH - 45);
+
   doc.setFont("helvetica", "italic");
   doc.setFontSize(8);
-  doc.setTextColor(180, 170, 155);
+  doc.setTextColor(148, 163, 184); // slate-400
   doc.text(
     "Thank you for your business. This is a computer-generated invoice.",
     W / 2,
-    pageH - 14,
+    pageH - 28,
     { align: "center" },
   );
 
@@ -380,12 +390,22 @@ const emptyInvoice = (): Invoice => ({
 export default function BillingPage() {
   const user = useSession();
   const role: RoleId = user?.role ?? "warehouse";
-  const [invoices, setInvoices] = useState<Invoice[]>(SEED);
+  const [invoices, setInvoices] = useState<Invoice[]>(() => {
+    if (typeof window !== "undefined") {
+      const saved = localStorage.getItem("agrozaar_billing_invoices");
+      return saved ? JSON.parse(saved) : SEED;
+    }
+    return SEED;
+  });
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState("All");
   const [formOpen, setFormOpen] = useState(false);
   const [editing, setEditing] = useState<Invoice | null>(null);
   const [viewInv, setViewInv] = useState<Invoice | null>(null);
+
+  useEffect(() => {
+    localStorage.setItem("agrozaar_billing_invoices", JSON.stringify(invoices));
+  }, [invoices]);
 
   const filtered = invoices.filter(
     (inv) =>

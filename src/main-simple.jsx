@@ -69,16 +69,18 @@ function App() {
     </div>
   );
 
-  // Route matching
-  if (route === "/" || route === "") return <HomePage />;
-  if (route === "/login") return <LoginPage />;
-  if (route === "/app" || route.startsWith("/app/")) return <AppLayout />;
-  if (route === "/forgot-password") return <Suspense fallback={<Loading />}><ForgotPasswordPage /></Suspense>;
-  if (route === "/reset-password") return <Suspense fallback={<Loading />}><ResetPasswordPage /></Suspense>;
-  if (route === "/session-expired") return <Suspense fallback={<Loading />}><SessionExpiredPage /></Suspense>;
-  if (route === "/unauthorized") return <Suspense fallback={<Loading />}><UnauthorizedPage /></Suspense>;
+  // Route matching — normalize by removing leading slash to support both slashed and non-slashed hashes (e.g. #/login vs #login)
+  const cleanRoute = route.replace(/^\//, "");
   
-  return <div className="p-8">404 - Page not found</div>;
+  if (cleanRoute === "login") return <LoginPage />;
+  if (cleanRoute === "app" || cleanRoute.startsWith("app/")) return <AppLayout />;
+  if (cleanRoute === "forgot-password") return <Suspense fallback={<Loading />}><ForgotPasswordPage /></Suspense>;
+  if (cleanRoute === "reset-password") return <Suspense fallback={<Loading />}><ResetPasswordPage /></Suspense>;
+  if (cleanRoute === "session-expired") return <Suspense fallback={<Loading />}><SessionExpiredPage /></Suspense>;
+  if (cleanRoute === "unauthorized") return <Suspense fallback={<Loading />}><UnauthorizedPage /></Suspense>;
+
+  // Any other route (including empty, root, or section anchors like "products", "/products", "about") renders HomePage
+  return <HomePage />;
 }
 
 const root = document.getElementById("root");

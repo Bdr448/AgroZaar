@@ -58,40 +58,37 @@ async function downloadAccountingReportPDF(reportTitle: string) {
   const doc = new jsPDF({ unit: "pt", format: "a4" });
   const W = doc.internal.pageSize.getWidth();
 
-  const BRAND = { r: 232, g: 155, b: 0 }; // turmeric #E89B00
-  const DARK = { r: 31, g: 31, b: 31 };
-  const LIGHT = { r: 250, g: 248, b: 245 };
+  const BRAND = { r: 37, g: 99, b: 235 }; // royal blue #2563EB
+  const DARK = { r: 30, g: 41, b: 59 }; // slate-800
+  const LIGHT = { r: 248, g: 250, b: 252 }; // slate-50
 
-  // Background header band
-  doc.setFillColor(DARK.r, DARK.g, DARK.b);
-  doc.rect(0, 0, W, 100, "F");
-
-  // Brand accent bar
+  // Top edge brand color bar (print-friendly accent)
   doc.setFillColor(BRAND.r, BRAND.g, BRAND.b);
-  doc.rect(0, 100, W, 4, "F");
+  doc.rect(0, 0, W, 8, "F");
 
   // Company name
-  doc.setTextColor(255, 255, 255);
+  doc.setTextColor(DARK.r, DARK.g, DARK.b);
   doc.setFont("helvetica", "bold");
   doc.setFontSize(22);
-  doc.text("AGROZAAR FOODS LLP", 40, 48);
+  doc.text("AGROZAAR FOODS LLP", 40, 46);
 
   doc.setFont("helvetica", "normal");
   doc.setFontSize(9);
-  doc.setTextColor(200, 195, 188);
-  doc.text("Premium Spices & Food Products", 40, 62);
-  doc.text("GSTIN: 24ABCDE1234F1Z5  |  FSSAI: 10023012000001", 40, 75);
+  doc.setTextColor(71, 85, 105); // slate-600
+  doc.text("Premium Spices & Food Products", 40, 60);
+  doc.text("GSTIN: 24ABCDE1234F1Z5  |  FSSAI: 10023012000001", 40, 73);
 
-  // Report title badge
-  doc.setFillColor(BRAND.r, BRAND.g, BRAND.b);
-  doc.roundedRect(W - 205, 30, 165, 34, 4, 4, "F");
-  doc.setTextColor(DARK.r, DARK.g, DARK.b);
+  // Report title badge (print-friendly right aligned border badge)
+  doc.setDrawColor(BRAND.r, BRAND.g, BRAND.b);
+  doc.setLineWidth(1.5);
+  doc.roundedRect(W - 205, 28, 165, 34, 4, 4, "D");
+  doc.setTextColor(BRAND.r, BRAND.g, BRAND.b);
   doc.setFont("helvetica", "bold");
   doc.setFontSize(10);
-  doc.text("FINANCIAL REPORT", W - 122, 51, { align: "center" });
+  doc.text("FINANCIAL REPORT", W - 122, 50, { align: "center" });
 
   // Sub-header details
-  let y = 130;
+  let y = 115;
   doc.setFont("helvetica", "bold");
   doc.setFontSize(14);
   doc.setTextColor(DARK.r, DARK.g, DARK.b);
@@ -99,7 +96,7 @@ async function downloadAccountingReportPDF(reportTitle: string) {
 
   doc.setFont("helvetica", "normal");
   doc.setFontSize(9);
-  doc.setTextColor(100, 90, 80);
+  doc.setTextColor(71, 85, 105); // slate-600
   doc.text(`Generated: ${new Date().toLocaleString()}`, 40, y + 16);
   doc.text("Classification: Confidential - Financial Intelligence", 40, y + 28);
 
@@ -177,30 +174,30 @@ async function downloadAccountingReportPDF(reportTitle: string) {
     head: headers,
     body: body,
     headStyles: {
-      fillColor: [DARK.r, DARK.g, DARK.b],
-      textColor: [BRAND.r, BRAND.g, BRAND.b],
+      fillColor: [37, 99, 235], // royal blue
+      textColor: [255, 255, 255], // white text
       fontStyle: "bold",
       fontSize: 9,
     },
-    bodyStyles: { fontSize: 8.5, textColor: [DARK.r, DARK.g, DARK.b] },
-    alternateRowStyles: { fillColor: [LIGHT.r, LIGHT.g, LIGHT.b] },
+    bodyStyles: { fontSize: 8.5, textColor: [30, 41, 59] },
+    alternateRowStyles: { fillColor: [248, 250, 252] },
     margin: { left: 40, right: 40 },
     tableLineWidth: 0.3,
-    tableLineColor: [220, 210, 195],
+    tableLineColor: [226, 232, 240],
   });
 
   const pageH = doc.internal.pageSize.getHeight();
-  doc.setFillColor(DARK.r, DARK.g, DARK.b);
-  doc.rect(0, pageH - 32, W, 32, "F");
-  doc.setFillColor(BRAND.r, BRAND.g, BRAND.b);
-  doc.rect(0, pageH - 32, W, 3, "F");
+  doc.setDrawColor(226, 232, 240);
+  doc.setLineWidth(1);
+  doc.line(40, pageH - 45, W - 40, pageH - 45);
+
   doc.setFont("helvetica", "italic");
   doc.setFontSize(8);
-  doc.setTextColor(180, 170, 155);
+  doc.setTextColor(148, 163, 184); // slate-400
   doc.text(
     "Agrozaar Foods LLP ERP system. Confidential Business Intelligence Report.",
     W / 2,
-    pageH - 14,
+    pageH - 28,
     { align: "center" },
   );
 

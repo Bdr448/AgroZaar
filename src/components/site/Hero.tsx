@@ -1,29 +1,35 @@
 import { ArrowRight, ShieldCheck, BadgeCheck } from "lucide-react";
 import heroImg from "@/assets/hero-turmeric.jpg";
 
-export function Hero() {
+interface HeroProps {
+  title?: string;
+  subtitle?: string;
+  imageUrl?: string;
+}
+
+export function Hero({ title, subtitle, imageUrl }: HeroProps) {
+  const displayTitle = title || "Pure Spices. Pure Trust.";
+  const displaySubtitle = subtitle || "Premium quality spices for B2B, retail, distributors, and export markets — crafted with modern processing and uncompromised purity under our brand Aviraaj.";
+  const displayImage = imageUrl || heroImg;
+
   return (
     <section id="top" className="relative overflow-hidden bg-secondary/50">
       <div className="pointer-events-none absolute -right-32 -top-32 h-96 w-96 rounded-full bg-primary/10 blur-3xl" />
       <div className="pointer-events-none absolute -bottom-40 -left-20 h-96 w-96 rounded-full bg-accent/10 blur-3xl" />
 
-      <div className="container-x relative grid items-center gap-12 py-16 md:py-24 lg:grid-cols-2">
+      <div className="container-x relative grid items-center gap-6 py-6 md:py-12 lg:grid-cols-2 lg:gap-12">
         <div>
           <span className="inline-flex items-center gap-2 rounded-full border border-primary/30 bg-background px-4 py-1.5 text-xs font-semibold tracking-wide text-spice-brown">
             <span className="h-1.5 w-1.5 rounded-full bg-primary" /> Spice Manufacturing & Export ·
             Gujarat, India
           </span>
 
-          <h1 className="mt-6 font-heading text-5xl font-extrabold leading-[1.05] text-spice-brown text-balance md:text-6xl">
-            Pure Spices.
-            <br />
-            <span className="text-primary">Pure Trust.</span>
+          <h1 className="mt-6 font-heading text-3xl sm:text-4xl md:text-6xl font-extrabold leading-[1.05] text-spice-brown text-balance">
+            {displayTitle}
           </h1>
 
-          <p className="mt-6 max-w-xl text-lg leading-relaxed text-muted-foreground">
-            Premium quality spices for B2B, retail, distributors, and export markets — crafted with
-            modern processing and uncompromised purity under our brand{" "}
-            <span className="font-semibold text-foreground">Aviraaj</span>.
+          <p className="mt-6 max-w-xl text-base md:text-lg leading-relaxed text-muted-foreground">
+            {displaySubtitle}
           </p>
 
           <div className="mt-9 flex flex-wrap gap-4">
@@ -56,11 +62,11 @@ export function Hero() {
         <div className="relative">
           <div className="overflow-hidden rounded-3xl border border-border bg-card shadow-card">
             <img
-              src={heroImg}
-              alt="Bowl of premium golden turmeric powder with turmeric roots"
+              src={displayImage}
+              alt="Bowl of premium spices"
               width={1280}
               height={1280}
-              className="h-full w-full object-cover"
+              className="h-full w-full object-cover max-h-[220px] md:max-h-[380px]"
             />
           </div>
           <div className="absolute -bottom-6 left-6 rounded-2xl border border-border bg-card px-6 py-4 shadow-card">

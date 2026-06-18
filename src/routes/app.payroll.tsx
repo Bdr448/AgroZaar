@@ -43,47 +43,46 @@ async function downloadSalarySlipPDF(row: SalaryRow) {
   const doc = new jsPDF({ unit: "pt", format: "a4" });
   const W = doc.internal.pageSize.getWidth();
 
-  const BRAND = { r: 232, g: 155, b: 0 }; // turmeric #E89B00
-  const DARK = { r: 31, g: 31, b: 31 };
-  const LIGHT = { r: 250, g: 248, b: 245 };
+  const BRAND = { r: 37, g: 99, b: 235 }; // royal blue #2563EB
+  const DARK = { r: 30, g: 41, b: 59 }; // slate-800
+  const LIGHT = { r: 248, g: 250, b: 252 }; // slate-50
 
-  // Background header band
-  doc.setFillColor(DARK.r, DARK.g, DARK.b);
-  doc.rect(0, 0, W, 100, "F");
-
-  // Brand accent bar
+  // Top edge brand color bar (print-friendly accent)
   doc.setFillColor(BRAND.r, BRAND.g, BRAND.b);
-  doc.rect(0, 100, W, 4, "F");
+  doc.rect(0, 0, W, 8, "F");
 
   // Company name
-  doc.setTextColor(255, 255, 255);
+  doc.setTextColor(DARK.r, DARK.g, DARK.b);
   doc.setFont("helvetica", "bold");
   doc.setFontSize(22);
-  doc.text("AGROZAAR FOODS LLP", 40, 48);
+  doc.text("AGROZAAR FOODS LLP", 40, 46);
 
   doc.setFont("helvetica", "normal");
   doc.setFontSize(9);
-  doc.setTextColor(200, 195, 188);
-  doc.text("Premium Spices & Food Products", 40, 62);
-  doc.text("GSTIN: 24ABCDE1234F1Z5  |  FSSAI: 10023012000001", 40, 75);
+  doc.setTextColor(71, 85, 105); // slate-600
+  doc.text("Premium Spices & Food Products", 40, 60);
+  doc.text("GSTIN: 24ABCDE1234F1Z5  |  FSSAI: 10023012000001", 40, 73);
 
-  // SALARY SLIP badge
-  doc.setFillColor(BRAND.r, BRAND.g, BRAND.b);
-  doc.roundedRect(W - 165, 30, 125, 34, 4, 4, "F");
-  doc.setTextColor(DARK.r, DARK.g, DARK.b);
+  // SALARY SLIP badge (print-friendly right aligned border badge)
+  doc.setDrawColor(BRAND.r, BRAND.g, BRAND.b);
+  doc.setLineWidth(1.5);
+  doc.roundedRect(W - 165, 28, 125, 34, 4, 4, "D");
+  doc.setTextColor(BRAND.r, BRAND.g, BRAND.b);
   doc.setFont("helvetica", "bold");
-  doc.setFontSize(13);
-  doc.text("SALARY SLIP", W - 102, 51, { align: "center" });
+  doc.setFontSize(11);
+  doc.text("SALARY SLIP", W - 102, 50, { align: "center" });
 
   // Employee Info
-  let y = 130;
+  let y = 115;
   doc.setFont("helvetica", "bold");
   doc.setFontSize(10);
   doc.setTextColor(BRAND.r, BRAND.g, BRAND.b);
   doc.text("EMPLOYEE DETAILS", 40, y);
 
   doc.setFillColor(LIGHT.r, LIGHT.g, LIGHT.b);
-  doc.roundedRect(40, y + 8, W - 80, 56, 4, 4, "F");
+  doc.setDrawColor(226, 232, 240);
+  doc.setLineWidth(1);
+  doc.roundedRect(40, y + 8, W - 80, 56, 4, 4, "FD");
 
   doc.setFont("helvetica", "normal");
   doc.setFontSize(9);
@@ -112,7 +111,7 @@ async function downloadSalarySlipPDF(row: SalaryRow) {
   doc.text(row.designation, W / 2 + 90, y + 44);
 
   // Salary Components Table
-  y = 215;
+  y = 200;
   const earnings = [
     ["Basic Salary", row.basic],
     ["HRA", row.hra],
@@ -132,13 +131,13 @@ async function downloadSalarySlipPDF(row: SalaryRow) {
       ...deductions.map(([desc, amt]) => ["Deduction", desc, fmtVal(amt as number)]),
     ],
     headStyles: {
-      fillColor: [DARK.r, DARK.g, DARK.b],
-      textColor: [BRAND.r, BRAND.g, BRAND.b],
+      fillColor: [37, 99, 235], // royal blue
+      textColor: [255, 255, 255], // white text
       fontStyle: "bold",
       fontSize: 9,
     },
-    bodyStyles: { fontSize: 9, textColor: [DARK.r, DARK.g, DARK.b] },
-    alternateRowStyles: { fillColor: [LIGHT.r, LIGHT.g, LIGHT.b] },
+    bodyStyles: { fontSize: 9, textColor: [30, 41, 59] },
+    alternateRowStyles: { fillColor: [248, 250, 252] },
     columnStyles: {
       0: { cellWidth: 100 },
       1: { cellWidth: W - 320 },
@@ -146,38 +145,40 @@ async function downloadSalarySlipPDF(row: SalaryRow) {
     },
     margin: { left: 40, right: 40 },
     tableLineWidth: 0.3,
-    tableLineColor: [220, 210, 195],
+    tableLineColor: [226, 232, 240],
   });
 
   const finalY = (doc as any).lastAutoTable.finalY + 20;
 
-  // Net Pay Block
-  doc.setFillColor(DARK.r, DARK.g, DARK.b);
-  doc.roundedRect(W - 240, finalY, 200, 36, 4, 4, "F");
+  // Net Pay Block (print-friendly border box with light blue background)
+  doc.setFillColor(219, 234, 254); // blue-100
+  doc.setDrawColor(191, 219, 254); // blue-200
+  doc.setLineWidth(1);
+  doc.roundedRect(W - 240, finalY, 200, 36, 4, 4, "FD");
 
-  doc.setTextColor(BRAND.r, BRAND.g, BRAND.b);
+  doc.setTextColor(30, 58, 138); // blue-900
   doc.setFont("helvetica", "bold");
   doc.setFontSize(10);
   doc.text("NET TAKE-HOME PAY", W - 230, finalY + 22);
 
-  doc.setTextColor(255, 255, 255);
+  doc.setTextColor(30, 58, 138);
   doc.setFont("helvetica", "bold");
   doc.setFontSize(12);
   doc.text(fmtVal(row.net), W - 50, finalY + 22, { align: "right" });
 
   // Footer
   const pageH = doc.internal.pageSize.getHeight();
-  doc.setFillColor(DARK.r, DARK.g, DARK.b);
-  doc.rect(0, pageH - 32, W, 32, "F");
-  doc.setFillColor(BRAND.r, BRAND.g, BRAND.b);
-  doc.rect(0, pageH - 32, W, 3, "F");
+  doc.setDrawColor(226, 232, 240);
+  doc.setLineWidth(1);
+  doc.line(40, pageH - 45, W - 40, pageH - 45);
+
   doc.setFont("helvetica", "italic");
   doc.setFontSize(8);
-  doc.setTextColor(180, 170, 155);
+  doc.setTextColor(148, 163, 184); // slate-400
   doc.text(
     "Confidential Document. This is a computer-generated salary slip and does not require a signature.",
     W / 2,
-    pageH - 14,
+    pageH - 28,
     { align: "center" },
   );
 
