@@ -65,7 +65,10 @@ function localStorageAvailable() {
   }
 }
 
-export const supabase = createClient(supabaseUrl || "https://placeholder.supabase.co", supabaseAnonKey || "placeholder", {
+const validatedUrl = (supabaseUrl && isValidHttpUrl(supabaseUrl)) ? supabaseUrl : "https://placeholder.supabase.co";
+const validatedKey = (supabaseAnonKey && supabaseUrl && isValidHttpUrl(supabaseUrl)) ? supabaseAnonKey : "placeholder";
+
+export const supabase = createClient(validatedUrl, validatedKey, {
   auth: {
     storage: typeof window !== "undefined" && localStorageAvailable() ? localStorage : inMemoryStorage,
     persistSession: true,
