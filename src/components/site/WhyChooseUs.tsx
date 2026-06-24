@@ -3,33 +3,33 @@ import { Sparkles, ShieldCheck, Globe2, Factory, FlaskConical, Soup } from "luci
 const items = [
   {
     icon: Sparkles,
-    title: "100% Pure",
-    desc: "No fillers or adulteration — only authentic, single-origin spices.",
+    title: "Direct Farm Sourcing",
+    desc: "Single-origin spices sourced straight from Banaskantha mandis and regional partners.",
   },
   {
     icon: ShieldCheck,
-    title: "Hygienically Processed",
-    desc: "Clean, controlled environments at every stage of production.",
+    title: "FSSAI & GMP Standards",
+    desc: "Meticulously processed in fully licensed, hygienic facilities matching international safety codes.",
   },
   {
     icon: Globe2,
-    title: "Export Quality",
-    desc: "Meeting international grading and packaging standards.",
+    title: "Global Export Grade",
+    desc: "Phytosanitary cleared and moisture-controlled packaging designed for long sea voyages.",
   },
   {
     icon: Factory,
-    title: "Advanced Manufacturing",
-    desc: "Modern grinding and blending lines for consistent output.",
+    title: "Cool-Grinding Milling",
+    desc: "Low-temperature grinding retains natural volatile oils and original flavor profiles.",
   },
   {
     icon: FlaskConical,
-    title: "Lab Tested",
-    desc: "Batch-wise testing for color, purity, moisture and safety.",
+    title: "NABL Lab Tested",
+    desc: "Batch-tested for curcumin percentages, capsaicin heat levels, and safety clearances.",
   },
   {
     icon: Soup,
-    title: "Rich Aroma & Taste",
-    desc: "Carefully processed to preserve natural flavor and color.",
+    title: "Zero Preservatives",
+    desc: "100% natural spices, completely free from artificial colors, starches, or chemical fillers.",
   },
 ];
 

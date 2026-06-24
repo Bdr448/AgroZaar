@@ -2,12 +2,12 @@ import { Wheat, Droplets, Cog, Blend, Package, Send } from "lucide-react";
 import manufacturing from "@/assets/manufacturing.jpg";
 
 const steps = [
-  { icon: Wheat, title: "Raw Material", desc: "Sourcing & sorting" },
-  { icon: Droplets, title: "Cleaning", desc: "Washing & drying" },
-  { icon: Cog, title: "Grinding", desc: "Precision milling" },
-  { icon: Blend, title: "Blending", desc: "Consistent mixing" },
-  { icon: Package, title: "Packing", desc: "Sealed packaging" },
-  { icon: Send, title: "Dispatch", desc: "Timely delivery" },
+  { icon: Wheat, title: "Mandi Sourcing", desc: "Direct farmer purchase & sorting" },
+  { icon: Droplets, title: "Solar Drying", desc: "Cleaning, washing & drying" },
+  { icon: Cog, title: "Cool Grinding", desc: "VOR low-temp pin-mill grinding" },
+  { icon: Blend, title: "Blending & QA", desc: "Homogeneous mixing & lab checks" },
+  { icon: Package, title: "Clean Packaging", desc: "Moisture-barrier double-wall packing" },
+  { icon: Send, title: "Global Shipping", desc: "FOB Mundra Port & sea cargo logistics" },
 ];
 
 export function ManufacturingProcess() {

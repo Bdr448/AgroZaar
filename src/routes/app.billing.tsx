@@ -44,11 +44,19 @@ const ADMIN_ROLES: RoleId[] = ["super-admin", "admin"];
 const canCreate = (role: RoleId) => ADMIN_ROLES.includes(role);
 
 
+const getUnitFactor = (unit: string) => {
+  const u = (unit || "").toLowerCase();
+  if (u === "ton" || u === "mt" || u === "metric tons" || u === "metric ton") return 1000;
+  if (u === "box") return 10;
+  if (u === "bag") return 25;
+  return 1;
+};
+
 const subtotal = (items: LineItem[]) =>
   items.reduce((s, i) => {
     const qty = Number(i.qty) || 0;
     const rate = Number(i.rate) || 0;
-    return s + qty * rate;
+    return s + qty * rate * getUnitFactor(i.unit);
   }, 0);
 
 const calcInvoice = (inv: Invoice) => {
@@ -186,7 +194,7 @@ async function downloadInvoicePDF(inv: Invoice, role: RoleId) {
       it.qty,
       it.unit,
       fmtPdf(it.rate),
-      fmtPdf(it.qty * it.rate),
+      fmtPdf(it.qty * it.rate * getUnitFactor(it.unit)),
     ]),
     headStyles: {
       fillColor: [37, 99, 235], // royal blue
@@ -441,6 +449,13 @@ export default function BillingPage() {
     setFormOpen(false);
   };
 
+  const updateStatus = (id: string, newStatus: Invoice["status"]) => {
+    setInvoices((prev) =>
+      prev.map((inv) => (inv.id === id ? { ...inv, status: newStatus } : inv))
+    );
+    setViewInv((prev) => (prev && prev.id === id ? { ...prev, status: newStatus } : prev));
+  };
+
   const deleteInvoice = (id: string) => setInvoices((prev) => prev.filter((i) => i.id !== id));
 
   return (
@@ -536,11 +551,17 @@ export default function BillingPage() {
                   <td className="px-4 py-3 text-muted-foreground">{inv.date}</td>
                   <td className="px-4 py-3 text-muted-foreground">{inv.dueDate}</td>
                   <td className="px-4 py-3">
-                    <span
-                      className={`rounded-full px-2.5 py-0.5 text-xs font-semibold ${STATUS_STYLE[inv.status]}`}
+                    <select
+                      value={inv.status}
+                      onChange={(e) => updateStatus(inv.id, e.target.value as Invoice["status"])}
+                      className={`rounded-full px-2.5 py-0.5 text-xs font-semibold border cursor-pointer outline-none focus:ring-1 focus:ring-primary/20 ${STATUS_STYLE[inv.status]}`}
                     >
-                      {inv.status}
-                    </span>
+                      {["Paid", "Pending", "Overdue"].map((s) => (
+                        <option key={s} className="bg-background text-foreground font-normal">
+                          {s}
+                        </option>
+                      ))}
+                    </select>
                   </td>
                   <td className="px-4 py-3">
                     <div className="flex items-center gap-2">
@@ -598,6 +619,7 @@ export default function BillingPage() {
           role={role}
           onClose={() => setViewInv(null)}
           onDownload={() => downloadInvoicePDF(viewInv, role)}
+          onUpdateStatus={updateStatus}
         />
       )}
     </div>
@@ -884,11 +906,13 @@ function InvoiceViewModal({
   role,
   onClose,
   onDownload,
+  onUpdateStatus,
 }: {
   invoice: Invoice;
   role: RoleId;
   onClose: () => void;
   onDownload: () => void;
+  onUpdateStatus: (id: string, status: Invoice["status"]) => void;
 }) {
   const { sub, discAmt, taxAmt, total } = calcInvoice(inv);
   const showFinancial = ["super-admin", "admin", "accountant", "partner"].includes(role);
@@ -924,11 +948,17 @@ function InvoiceViewModal({
             <ViewField
               label="Status"
               value={
-                <span
-                  className={`rounded-full px-2.5 py-0.5 text-xs font-semibold ${STATUS_STYLE[inv.status]}`}
+                <select
+                  value={inv.status}
+                  onChange={(e) => onUpdateStatus(inv.id, e.target.value as Invoice["status"])}
+                  className={`rounded-full px-2.5 py-0.5 text-xs font-semibold border cursor-pointer outline-none focus:ring-1 focus:ring-primary/20 ${STATUS_STYLE[inv.status]}`}
                 >
-                  {inv.status}
-                </span>
+                  {["Paid", "Pending", "Overdue"].map((s) => (
+                    <option key={s} className="bg-background text-foreground font-normal">
+                      {s}
+                    </option>
+                  ))}
+                </select>
               }
             />
           </div>
@@ -965,7 +995,7 @@ function InvoiceViewModal({
                     <td className="px-4 py-2.5 text-right">{it.qty}</td>
                     <td className="px-4 py-2.5 text-muted-foreground">{it.unit}</td>
                     <td className="px-4 py-2.5 text-right">{fmt(it.rate)}</td>
-                    <td className="px-4 py-2.5 text-right font-medium">{fmt(it.qty * it.rate)}</td>
+                    <td className="px-4 py-2.5 text-right font-medium">{fmt(it.qty * it.rate * getUnitFactor(it.unit))}</td>
                   </tr>
                 ))}
               </tbody>

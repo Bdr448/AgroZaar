@@ -8,8 +8,8 @@ interface HeroProps {
 }
 
 export function Hero({ title, subtitle, imageUrl }: HeroProps) {
-  const displayTitle = title || "Pure Spices. Pure Trust.";
-  const displaySubtitle = subtitle || "Premium quality spices for B2B, retail, distributors, and export markets — crafted with modern processing and uncompromised purity under our brand Aviraaj.";
+  const displayTitle = title || "Pure Spices Direct From India's Golden Farming Belts";
+  const displaySubtitle = subtitle || "Sourced straight from the organic fields of Deesa, Gujarat. Processed with low-temperature cool-grinding to preserve natural volatile oils, purity, and rich aroma — certified export-grade under flagship brand Aviraaj.";
   const displayImage = imageUrl || heroImg;
 
   return (

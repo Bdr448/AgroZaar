@@ -2,19 +2,19 @@ import { Quote, Star } from "lucide-react";
 
 const testimonials = [
   {
-    name: "Rajesh Mehta",
-    role: "Distributor, Mumbai",
-    text: "Consistent color and aroma batch after batch. Aviraaj turmeric has become a staple in our retail network.",
+    name: "Hiren Bhai Patel",
+    role: "Owner, Patel Spice Mart (Kalupur Mandi, Ahmedabad)",
+    text: "Aviraaj turmeric and chilli powder has consistent color and aroma batch after batch. Our retail clients in Gujarat trust this quality and we have set up auto-reorder terms every month.",
   },
   {
     name: "Imran Khalid",
-    role: "Importer, UAE",
-    text: "Professional documentation and export-grade packaging made the whole process smooth. Highly dependable supplier.",
+    role: "Procurement Lead, Gulf Spices LLC (Dubai, UAE)",
+    text: "Importing containers from Agrozaar was a breeze. Their phytosanitary paperwork, export documentation, and moisture-sealed double packaging met UAE import standards perfectly.",
   },
   {
     name: "Anita Sharma",
-    role: "Wholesaler, Ahmedabad",
-    text: "Pure, hygienic and well-priced. Our customers trust the quality and we keep reordering.",
+    role: "Director, Swastik Food Distributors (Indore)",
+    text: "Pure, hygienic and reasonably priced. The curcumin level in their turmeric is tested and verified, which gives us immense confidence when distributing to health-conscious retail channels.",
   },
 ];
 

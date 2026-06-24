@@ -381,6 +381,12 @@ export function CustomersModule() {
   const [reqType, setReqType] = useState<"edit" | "delete">("edit");
   const [reqReason, setReqReason] = useState("");
 
+  const [selectedCustomer, setSelectedCustomer] = useState<any | null>(null);
+  const [activeTab, setActiveTab] = useState<"overview" | "addresses" | "orders" | "payments">("overview");
+  const [customerOrders, setCustomerOrders] = useState<any[]>([]);
+  const [customerInvoices, setCustomerInvoices] = useState<any[]>([]);
+  const [receivables, setReceivables] = useState(0);
+
   const canManage = ["super-admin", "admin", "partner", "sales"].includes(session?.role || "");
   const isAdmin = ["super-admin", "admin"].includes(session?.role || "");
   const canEditDirect = isAdmin || ["partner", "sales"].includes(session?.role || "");
@@ -393,6 +399,7 @@ export function CustomersModule() {
         .from("customers")
         .select("*")
         .eq("is_deleted", false)
+        .or("is_lead.eq.false,is_lead.is.null")
         .order("created_at", { ascending: false });
       setData(res || []);
 
@@ -401,6 +408,13 @@ export function CustomersModule() {
         .select("*")
         .eq("module_name", "Customers");
       setRequests(reqs || []);
+
+      const { data: orders } = await supabase
+        .from("sales_orders")
+        .select("grand_total, status")
+        .eq("status", "pending");
+      const totalPending = orders?.reduce((sum, o) => sum + (Number(o.grand_total) || 0), 0) || 0;
+      setReceivables(totalPending);
     } catch (err: any) {
       console.error(err);
     } finally {
@@ -408,9 +422,36 @@ export function CustomersModule() {
     }
   };
 
+  const loadCustomerDetails = async (customer: any) => {
+    const { data: orders } = await supabase
+      .from("sales_orders")
+      .select("*")
+      .eq("customer_id", customer.id)
+      .order("created_at", { ascending: false });
+    setCustomerOrders(orders || []);
+
+    if (typeof window !== "undefined") {
+      const saved = localStorage.getItem("agrozaar_billing_invoices");
+      if (saved) {
+        const invs = JSON.parse(saved);
+        const filteredInvs = invs.filter((i: any) => 
+          i.customerName?.toLowerCase() === customer.name?.toLowerCase() ||
+          (customer.company && i.customerName?.toLowerCase() === customer.company?.toLowerCase())
+        );
+        setCustomerInvoices(filteredInvs);
+      }
+    }
+  };
+
   useEffect(() => {
     loadData();
   }, []);
+
+  useEffect(() => {
+    if (selectedCustomer) {
+      loadCustomerDetails(selectedCustomer);
+    }
+  }, [selectedCustomer]);
 
   const getRequestStatus = (recordId: string, type: "edit" | "delete") => {
     return requests.find((r) => r.record_id === recordId && r.action_type === type);
@@ -449,6 +490,7 @@ export function CustomersModule() {
   const onSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!form.name) return toast.error("Name is required");
+    if (!form.phone) return toast.error("Phone number is required");
     
     if (editId) {
       const oldRec = data.find((c) => c.id === editId);
@@ -478,10 +520,39 @@ export function CustomersModule() {
       }
       toast.success("Customer updated successfully");
       setEditId(null);
+      setForm({ name: "", company: "", email: "", phone: "", gstin: "" });
+      setShowForm(false);
+      loadData();
     } else {
+      const { data: existing } = await supabase
+        .from("customers")
+        .select("customer_code")
+        .eq("is_lead", false)
+        .order("customer_code", { ascending: false })
+        .limit(1);
+        
+      let nextNum = 1;
+      if (existing && existing.length > 0 && existing[0].customer_code) {
+        const code = existing[0].customer_code;
+        const numMatch = code.match(/\d+/);
+        if (numMatch) {
+          nextNum = parseInt(numMatch[0], 10) + 1;
+        }
+      }
+      const customerCode = `CUS${String(nextNum).padStart(5, "0")}`;
+
       const { data: inserted, error } = await supabase
         .from("customers")
-        .insert([form])
+        .insert([{
+          name: form.name,
+          company: form.company,
+          email: form.email,
+          phone: form.phone,
+          gstin: form.gstin,
+          is_lead: false,
+          customer_code: customerCode,
+          customer_type: "Other",
+        }])
         .select()
         .single();
       if (error) return toast.error(error.message);
@@ -497,12 +568,15 @@ export function CustomersModule() {
         });
       }
 
-      toast.success("Customer added successfully");
+      toast.success(`Customer added! Code: ${customerCode}`);
+      setForm({ name: "", company: "", email: "", phone: "", gstin: "" });
+      setShowForm(false);
+      loadData();
+      if (inserted) {
+        setSelectedCustomer(inserted);
+        setActiveTab("overview");
+      }
     }
-    
-    setForm({ name: "", company: "", email: "", phone: "", gstin: "" });
-    setShowForm(false);
-    loadData();
   };
 
   const handleEdit = (customer: any) => {
@@ -548,9 +622,24 @@ export function CustomersModule() {
   };
 
   const columns: Column<any>[] = [
-    { key: "name", header: "Customer Name", sortable: true },
+    {
+      key: "name",
+      header: "Customer Name",
+      sortable: true,
+      render: (r) => (
+        <button
+          onClick={() => {
+            setSelectedCustomer(r);
+            setActiveTab("overview");
+          }}
+          className="font-medium text-primary hover:underline text-left cursor-pointer"
+        >
+          {r.name}
+        </button>
+      ),
+    },
+    { key: "customer_code", header: "Customer Code" },
     { key: "company", header: "Company" },
-    { key: "email", header: "Email" },
     { key: "phone", header: "Phone" },
     { key: "gstin", header: "GSTIN" },
     {
@@ -623,19 +712,270 @@ export function CustomersModule() {
           canManage && (
             <button
               onClick={() => {
+                setSelectedCustomer(null);
                 setEditId(null);
                 setForm({ name: "", company: "", email: "", phone: "", gstin: "" });
                 setShowForm(!showForm);
               }}
               className="inline-flex items-center gap-1.5 rounded-lg bg-primary px-4 py-2 text-sm font-semibold text-primary-foreground shadow-soft hover:bg-primary/90 cursor-pointer"
             >
-              <Plus className="h-4 w-4" /> {showForm ? "View Directory" : "Add Customer"}
+              <Plus className="h-4 w-4" /> {showForm || selectedCustomer ? "View Directory" : "Add Customer"}
             </button>
           )
         }
       />
 
-      {showForm ? (
+      {selectedCustomer ? (
+        <Panel
+          title={`Customer Profile: ${selectedCustomer.name} (${selectedCustomer.customer_code || "No Code"})`}
+          action={
+            <button
+              onClick={() => setSelectedCustomer(null)}
+              className="rounded-lg border px-4 py-2 text-sm font-semibold hover:bg-muted cursor-pointer"
+            >
+              Back to Directory
+            </button>
+          }
+        >
+          <div className="flex border-b border-border bg-muted/20 px-6 pt-3 gap-6">
+            {[
+              { id: "overview", label: "Overview" },
+              { id: "addresses", label: "Addresses" },
+              { id: "orders", label: "Orders" },
+              { id: "payments", label: "Payments" },
+            ].map((tab) => (
+              <button
+                key={tab.id}
+                onClick={() => setActiveTab(tab.id as any)}
+                className={`pb-3 text-sm font-semibold border-b-2 transition-colors cursor-pointer ${
+                  activeTab === tab.id
+                    ? "border-primary text-primary"
+                    : "border-transparent text-muted-foreground hover:text-foreground"
+                }`}
+              >
+                {tab.label}
+              </button>
+            ))}
+          </div>
+
+          <div className="p-6">
+            {activeTab === "overview" && (
+              <div className="space-y-6">
+                <div className="grid gap-4 sm:grid-cols-3">
+                  <StatCard
+                    label="Outstanding Balance"
+                    value={inr(customerOrders.filter(o => o.status === "pending").reduce((sum, o) => sum + (o.grand_total || 0), 0))}
+                    icon={Wallet}
+                    tone="accent"
+                  />
+                  <StatCard
+                    label="Total Purchases"
+                    value={inr(customerOrders.reduce((sum, o) => sum + (o.grand_total || 0), 0))}
+                    icon={Plus}
+                    tone="primary"
+                  />
+                  <StatCard
+                    label="Total Orders"
+                    value={`${customerOrders.length} orders`}
+                    icon={FileText}
+                    tone="brown"
+                  />
+                </div>
+
+                <div className="grid gap-4 sm:grid-cols-2 text-sm border-t pt-6">
+                  <div className="space-y-4">
+                    <div>
+                      <p className="text-xs text-muted-foreground font-semibold">Customer Name</p>
+                      <p className="font-semibold mt-0.5">{selectedCustomer.name}</p>
+                    </div>
+                    <div>
+                      <p className="text-xs text-muted-foreground font-semibold">Company Name</p>
+                      <p className="font-semibold mt-0.5">{selectedCustomer.company || "N/A"}</p>
+                    </div>
+                    <div>
+                      <p className="text-xs text-muted-foreground font-semibold">Customer Code</p>
+                      <p className="font-semibold mt-0.5">{selectedCustomer.customer_code || "N/A"}</p>
+                    </div>
+                    <div>
+                      <p className="text-xs text-muted-foreground font-semibold">Customer Type</p>
+                      <select
+                        value={selectedCustomer.customer_type || "Other"}
+                        onChange={async (e) => {
+                          const val = e.target.value;
+                          const { error } = await supabase
+                            .from("customers")
+                            .update({ customer_type: val })
+                            .eq("id", selectedCustomer.id);
+                          if (error) return toast.error(error.message);
+                          setSelectedCustomer({ ...selectedCustomer, customer_type: val });
+                          toast.success("Customer type updated!");
+                        }}
+                        className="rounded-lg border border-input bg-card px-2.5 py-1.5 text-xs font-semibold mt-1 outline-none cursor-pointer"
+                      >
+                        {['Retailer', 'Distributor', 'Wholesaler', 'Corporate', 'Exporter', 'Other'].map(t => (
+                          <option key={t} value={t}>{t}</option>
+                        ))}
+                      </select>
+                    </div>
+                  </div>
+
+                  <div className="space-y-4">
+                    <div>
+                      <p className="text-xs text-muted-foreground font-semibold">Email</p>
+                      <p className="font-semibold mt-0.5">{selectedCustomer.email || "N/A"}</p>
+                    </div>
+                    <div>
+                      <p className="text-xs text-muted-foreground font-semibold">Phone</p>
+                      <p className="font-semibold mt-0.5">
+                        {selectedCustomer.phone ? `${selectedCustomer.phone_country_code || "+91"} ${selectedCustomer.phone}` : "N/A"}
+                      </p>
+                    </div>
+                    <div>
+                      <p className="text-xs text-muted-foreground font-semibold">GSTIN</p>
+                      <p className="font-semibold mt-0.5">{selectedCustomer.gstin || "N/A"}</p>
+                    </div>
+                    <div>
+                      <p className="text-xs text-muted-foreground font-semibold">Status</p>
+                      <select
+                        value={selectedCustomer.status || "active"}
+                        onChange={async (e) => {
+                          const val = e.target.value;
+                          const { error } = await supabase
+                            .from("customers")
+                            .update({ status: val })
+                            .eq("id", selectedCustomer.id);
+                          if (error) return toast.error(error.message);
+                          setSelectedCustomer({ ...selectedCustomer, status: val });
+                          toast.success("Customer status updated!");
+                        }}
+                        className="rounded-lg border border-input bg-card px-2.5 py-1.5 text-xs font-semibold mt-1 outline-none cursor-pointer"
+                      >
+                        <option value="active">Active</option>
+                        <option value="inactive">Inactive</option>
+                      </select>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {activeTab === "addresses" && (
+              <div className="space-y-4 text-sm">
+                <div>
+                  <label className="text-xs font-medium text-muted-foreground block font-semibold">Billing Address / Company Address</label>
+                  <textarea
+                    value={selectedCustomer.company_address || ""}
+                    placeholder="Enter Billing Address..."
+                    onChange={(e) => setSelectedCustomer({ ...selectedCustomer, company_address: e.target.value })}
+                    onBlur={async () => {
+                      const { error } = await supabase
+                        .from("customers")
+                        .update({ company_address: selectedCustomer.company_address })
+                        .eq("id", selectedCustomer.id);
+                      if (error) toast.error(error.message);
+                      else toast.success("Billing address saved!");
+                    }}
+                    className="w-full rounded-lg border border-input bg-card px-3 py-2 text-sm outline-none mt-1 h-24 focus:ring-2 focus:ring-primary/20"
+                  />
+                </div>
+                <div>
+                  <label className="text-xs font-medium text-muted-foreground block font-semibold">City</label>
+                  <input
+                    value={selectedCustomer.city || ""}
+                    placeholder="Enter City..."
+                    onChange={(e) => setSelectedCustomer({ ...selectedCustomer, city: e.target.value })}
+                    onBlur={async () => {
+                      const { error } = await supabase
+                        .from("customers")
+                        .update({ city: selectedCustomer.city })
+                        .eq("id", selectedCustomer.id);
+                      if (error) toast.error(error.message);
+                      else toast.success("City saved!");
+                    }}
+                    className="w-full rounded-lg border border-input bg-card px-3 py-2 text-sm outline-none mt-1 focus:ring-2 focus:ring-primary/20"
+                  />
+                </div>
+              </div>
+            )}
+
+            {activeTab === "orders" && (
+              <div className="overflow-x-auto rounded-xl border">
+                <table className="w-full text-sm text-left">
+                  <thead>
+                    <tr className="border-b bg-muted/40 text-xs text-muted-foreground uppercase font-semibold">
+                      <th className="px-4 py-3">Order #</th>
+                      <th className="px-4 py-3 text-right">Grand Total</th>
+                      <th className="px-4 py-3">Order Date</th>
+                      <th className="px-4 py-3">Status</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {customerOrders.length === 0 ? (
+                      <tr>
+                        <td colSpan={4} className="px-4 py-8 text-center text-muted-foreground">No orders recorded for this customer.</td>
+                      </tr>
+                    ) : (
+                      customerOrders.map((o) => (
+                        <tr key={o.id} className="border-b last:border-0 hover:bg-muted/30">
+                          <td className="px-4 py-3 font-semibold text-primary">{o.order_number}</td>
+                          <td className="px-4 py-3 text-right font-medium">{inr(o.grand_total)}</td>
+                          <td className="px-4 py-3 text-muted-foreground">{new Date(o.created_at).toLocaleDateString()}</td>
+                          <td className="px-4 py-3">
+                            <span className={`inline-block rounded-full px-2.5 py-0.5 text-xs font-semibold uppercase ${
+                              o.status === "dispatched" || o.status === "delivered" ? "bg-green-100 text-green-700" : "bg-yellow-100 text-yellow-700"
+                            }`}>
+                              {o.status}
+                            </span>
+                          </td>
+                        </tr>
+                      ))
+                    )}
+                  </tbody>
+                </table>
+              </div>
+            )}
+
+            {activeTab === "payments" && (
+              <div className="overflow-x-auto rounded-xl border">
+                <table className="w-full text-sm text-left">
+                  <thead>
+                    <tr className="border-b bg-muted/40 text-xs text-muted-foreground uppercase font-semibold">
+                      <th className="px-4 py-3">Invoice #</th>
+                      <th className="px-4 py-3 text-right">Total Amount</th>
+                      <th className="px-4 py-3">Invoice Date</th>
+                      <th className="px-4 py-3">Due Date</th>
+                      <th className="px-4 py-3">Status</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {customerInvoices.length === 0 ? (
+                      <tr>
+                        <td colSpan={5} className="px-4 py-8 text-center text-muted-foreground">No billing invoices found for this customer.</td>
+                      </tr>
+                    ) : (
+                      customerInvoices.map((inv) => (
+                        <tr key={inv.id} className="border-b last:border-0 hover:bg-muted/30">
+                          <td className="px-4 py-3 font-semibold text-primary">{inv.id}</td>
+                          <td className="px-4 py-3 text-right font-medium">{inr(inv.items.reduce((s: number, it: any) => s + (it.qty * it.rate * getUnitFactor(it.unit)), 0))}</td>
+                          <td className="px-4 py-3 text-muted-foreground">{inv.date}</td>
+                          <td className="px-4 py-3 text-muted-foreground">{inv.dueDate}</td>
+                          <td className="px-4 py-3">
+                            <span className={`inline-block rounded-full px-2.5 py-0.5 text-xs font-semibold uppercase ${
+                              inv.status === "Paid" ? "bg-green-100 text-green-700" : inv.status === "Pending" ? "bg-yellow-100 text-yellow-700" : "bg-red-100 text-red-700"
+                            }`}>
+                              {inv.status}
+                            </span>
+                          </td>
+                        </tr>
+                      ))
+                    )}
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </div>
+        </Panel>
+      ) : showForm ? (
         <Panel title={editId ? "Edit Customer" : "Add New Customer"}>
           <form onSubmit={onSubmit} className="grid gap-4 p-6 sm:grid-cols-2">
             <div className="space-y-1.5">
@@ -668,10 +1008,11 @@ export function CustomersModule() {
               />
             </div>
             <div className="space-y-1.5">
-              <label className="text-sm font-medium">Phone Number</label>
+              <label className="text-sm font-medium">Phone Number *</label>
               <input
                 value={form.phone}
                 onChange={(e) => setForm({ ...form, phone: e.target.value })}
+                required
                 className="w-full rounded-lg border border-input bg-card px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-primary/20"
                 placeholder="+91 99000-00000"
               />
@@ -703,14 +1044,14 @@ export function CustomersModule() {
               tone="primary"
             />
             <StatCard
-              label="Corporate Accounts"
-              value={String(data.filter((d) => d.company).length)}
+              label="Active Accounts"
+              value={String(data.filter((d) => d.status !== "inactive").length)}
               icon={Landmark}
               tone="accent"
             />
             <StatCard
-              label="Tax Registrations"
-              value={String(data.filter((d) => d.gstin).length)}
+              label="Outstanding Receivables"
+              value={inr(receivables)}
               icon={ShieldCheck}
               tone="brown"
             />
@@ -1771,19 +2112,27 @@ export function InventoryModule() {
 export function CrmModule() {
   const [data, setData] = useState<any[]>([]);
   const [showForm, setShowForm] = useState(false);
+  const [selectedLead, setSelectedLead] = useState<any | null>(null);
+  const [isEditing, setIsEditing] = useState(false);
+  const [editForm, setEditForm] = useState<any>({});
   const [form, setForm] = useState({
     name: "",
     company: "",
     email: "",
     phone: "",
+    phone_country_code: "+91",
+    lead_source: "Website",
+    company_address: "",
+    company_website: "",
     notes: "New lead captured",
+    next_follow_up_date: "",
   });
 
   const loadData = async () => {
-    // In our simplified database structure, we use the customers table but tag leads without orders
     const { data: res } = await supabase
       .from("customers")
       .select("*")
+      .eq("is_lead", true)
       .order("created_at", { ascending: false });
     setData(res || []);
   };
@@ -1801,26 +2150,160 @@ export function CrmModule() {
         company: form.company || "Prospect",
         email: form.email,
         phone: form.phone,
+        phone_country_code: form.phone_country_code,
+        lead_source: form.lead_source,
+        company_address: form.company_address,
+        company_website: form.company_website,
+        notes: form.notes,
+        next_follow_up_date: form.next_follow_up_date || null,
+        is_lead: true,
+        lead_status: "new",
       },
     ]);
     if (error) return toast.error(error.message);
     toast.success("Lead added successfully to pipeline");
-    setForm({ name: "", company: "", email: "", phone: "", notes: "" });
+    setForm({
+      name: "",
+      company: "",
+      email: "",
+      phone: "",
+      phone_country_code: "+91",
+      lead_source: "Website",
+      company_address: "",
+      company_website: "",
+      notes: "New lead captured",
+      next_follow_up_date: "",
+    });
     setShowForm(false);
     loadData();
   };
 
+  const saveLeadEdits = async () => {
+    if (!editForm.name) return toast.error("Name is required");
+    const { error } = await supabase
+      .from("customers")
+      .update({
+        name: editForm.name,
+        company: editForm.company,
+        email: editForm.email,
+        phone: editForm.phone,
+        phone_country_code: editForm.phone_country_code,
+        lead_source: editForm.lead_source,
+        company_address: editForm.company_address,
+        company_website: editForm.company_website,
+        notes: editForm.notes,
+        next_follow_up_date: editForm.next_follow_up_date || null,
+        last_contacted_at: editForm.last_contacted_at || null,
+      })
+      .eq("id", editForm.id);
+
+    if (error) return toast.error(error.message);
+    toast.success("Lead details updated!");
+    setIsEditing(false);
+    setSelectedLead(editForm);
+    loadData();
+  };
+
+  const updateLeadStatusDirectly = async (leadId: string, status: string) => {
+    const { error } = await supabase
+      .from("customers")
+      .update({ lead_status: status })
+      .eq("id", leadId);
+
+    if (error) return toast.error(error.message);
+    toast.success(`Lead status updated to ${status}!`);
+    setSelectedLead((prev: any) => prev ? { ...prev, lead_status: status } : null);
+    setEditForm((prev: any) => prev ? { ...prev, lead_status: status } : null);
+    loadData();
+  };
+
+  const convertLeadToCustomer = async (lead: any) => {
+    const customerType = prompt(
+      "Enter Customer Type:\n(Retailer, Distributor, Wholesaler, Corporate, Exporter, Other)",
+      "Wholesaler"
+    );
+    if (customerType === null) return;
+    
+    const validTypes = ['Retailer', 'Distributor', 'Wholesaler', 'Corporate', 'Exporter', 'Other'];
+    if (!validTypes.includes(customerType)) {
+      return toast.error("Invalid Customer Type. Choose from: " + validTypes.join(", "));
+    }
+
+    const { data: existing } = await supabase
+      .from("customers")
+      .select("customer_code")
+      .eq("is_lead", false)
+      .order("customer_code", { ascending: false })
+      .limit(1);
+      
+    let nextNum = 1;
+    if (existing && existing.length > 0 && existing[0].customer_code) {
+      const code = existing[0].customer_code;
+      const numMatch = code.match(/\d+/);
+      if (numMatch) {
+        nextNum = parseInt(numMatch[0], 10) + 1;
+      }
+    }
+    const customerCode = `CUS${String(nextNum).padStart(5, "0")}`;
+
+    const { error } = await supabase
+      .from("customers")
+      .update({
+        is_lead: false,
+        lead_status: "won",
+        customer_code: customerCode,
+        customer_type: customerType,
+      })
+      .eq("id", lead.id);
+
+    if (error) return toast.error(error.message);
+    toast.success(`Converted to Customer successfully! Code: ${customerCode}`);
+    setSelectedLead(null);
+    loadData();
+  };
+
   const columns: Column<any>[] = [
-    { key: "name", header: "Lead / Contact", sortable: true },
+    {
+      key: "name",
+      header: "Lead / Contact",
+      sortable: true,
+      render: (r) => (
+        <button
+          onClick={() => {
+            setSelectedLead(r);
+            setEditForm(r);
+            setIsEditing(false);
+          }}
+          className="font-medium text-primary hover:underline text-left cursor-pointer"
+        >
+          {r.name}
+        </button>
+      ),
+    },
     { key: "company", header: "Prospective Client" },
-    { key: "email", header: "Email" },
-    { key: "phone", header: "Phone" },
+    {
+      key: "lead_status",
+      header: "Status",
+      render: (r) => (
+        <span className="inline-block rounded-full bg-secondary px-2.5 py-0.5 text-xs font-semibold uppercase">
+          {r.lead_status || "new"}
+        </span>
+      ),
+    },
+    {
+      key: "next_follow_up_date",
+      header: "Next Follow-up",
+      render: (r) => r.next_follow_up_date ? new Date(r.next_follow_up_date).toLocaleDateString() : "Not scheduled",
+    },
     {
       key: "created_at",
       header: "Captured At",
       render: (r) => new Date(r.created_at).toLocaleDateString(),
     },
   ];
+
+  const todayStr = new Date().toISOString().slice(0, 10);
+  const todaysFollowups = data.filter((l) => l.next_follow_up_date === todayStr).length;
 
   return (
     <div className="space-y-6">
@@ -1829,15 +2312,270 @@ export function CrmModule() {
         subtitle="Track prospective spice deals, followups, and client conversions"
         action={
           <button
-            onClick={() => setShowForm(!showForm)}
-            className="inline-flex items-center gap-1.5 rounded-lg bg-primary px-4 py-2 text-sm font-semibold text-primary-foreground shadow-soft hover:bg-primary/90"
+            onClick={() => {
+              setSelectedLead(null);
+              setIsEditing(false);
+              setShowForm(!showForm);
+            }}
+            className="inline-flex items-center gap-1.5 rounded-lg bg-primary px-4 py-2 text-sm font-semibold text-primary-foreground shadow-soft hover:bg-primary/90 cursor-pointer"
           >
-            <Plus className="h-4 w-4" /> {showForm ? "View Pipeline" : "Add Lead"}
+            <Plus className="h-4 w-4" /> {showForm || selectedLead ? "View Pipeline" : "Add Lead"}
           </button>
         }
       />
 
-      {showForm ? (
+      {selectedLead ? (
+        <Panel
+          title={isEditing ? `Edit Lead: ${selectedLead.name}` : `Lead Profile: ${selectedLead.name}`}
+          action={
+            <div className="flex items-center gap-2">
+              {!isEditing && (
+                <button
+                  onClick={() => {
+                    setEditForm({ ...selectedLead });
+                    setIsEditing(true);
+                  }}
+                  className="rounded-lg border px-3 py-1 text-xs font-semibold hover:bg-muted cursor-pointer"
+                >
+                  Edit
+                </button>
+              )}
+              <button
+                onClick={() => {
+                  setSelectedLead(null);
+                  setIsEditing(false);
+                }}
+                className="rounded-lg border px-3 py-1 text-xs font-semibold hover:bg-muted cursor-pointer"
+              >
+                Back to Pipeline
+              </button>
+            </div>
+          }
+        >
+          {isEditing ? (
+            <form
+              onSubmit={(e) => {
+                e.preventDefault();
+                saveLeadEdits();
+              }}
+              className="grid gap-4 p-6 sm:grid-cols-2"
+            >
+              <div className="space-y-1.5">
+                <label className="text-xs font-medium text-muted-foreground">Contact Name *</label>
+                <input
+                  value={editForm.name || ""}
+                  onChange={(e) => setEditForm({ ...editForm, name: e.target.value })}
+                  required
+                  className="w-full rounded-lg border border-input bg-card px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-primary/20"
+                />
+              </div>
+              <div className="space-y-1.5">
+                <label className="text-xs font-medium text-muted-foreground">Company Name</label>
+                <input
+                  value={editForm.company || ""}
+                  onChange={(e) => setEditForm({ ...editForm, company: e.target.value })}
+                  className="w-full rounded-lg border border-input bg-card px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-primary/20"
+                />
+              </div>
+              <div className="space-y-1.5">
+                <label className="text-xs font-medium text-muted-foreground">Email</label>
+                <input
+                  type="email"
+                  value={editForm.email || ""}
+                  onChange={(e) => setEditForm({ ...editForm, email: e.target.value })}
+                  className="w-full rounded-lg border border-input bg-card px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-primary/20"
+                />
+              </div>
+              <div className="space-y-1.5">
+                <label className="text-xs font-medium text-muted-foreground">Phone Number</label>
+                <div className="flex gap-2">
+                  <select
+                    value={editForm.phone_country_code || "+91"}
+                    onChange={(e) => setEditForm({ ...editForm, phone_country_code: e.target.value })}
+                    className="rounded-lg border border-input bg-card px-2 py-2 text-sm outline-none focus:ring-2 focus:ring-primary/20"
+                  >
+                    <option value="+91">+91 (IN)</option>
+                    <option value="+1">+1 (US)</option>
+                    <option value="+44">+44 (UK)</option>
+                    <option value="+971">+971 (UAE)</option>
+                  </select>
+                  <input
+                    value={editForm.phone || ""}
+                    onChange={(e) => setEditForm({ ...editForm, phone: e.target.value })}
+                    className="w-full rounded-lg border border-input bg-card px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-primary/20"
+                  />
+                </div>
+              </div>
+              <div className="space-y-1.5">
+                <label className="text-xs font-medium text-muted-foreground">Lead Source</label>
+                <select
+                  value={editForm.lead_source || "Website"}
+                  onChange={(e) => setEditForm({ ...editForm, lead_source: e.target.value })}
+                  className="w-full rounded-lg border border-input bg-card px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-primary/20"
+                >
+                  {["Website", "Referral", "Trade Fair", "LinkedIn", "Direct Contact"].map((s) => (
+                    <option key={s} value={s}>{s}</option>
+                  ))}
+                </select>
+              </div>
+              <div className="space-y-1.5">
+                <label className="text-xs font-medium text-muted-foreground">Next Follow-up Date</label>
+                <input
+                  type="date"
+                  value={editForm.next_follow_up_date || ""}
+                  onChange={(e) => setEditForm({ ...editForm, next_follow_up_date: e.target.value })}
+                  className="w-full rounded-lg border border-input bg-card px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-primary/20"
+                />
+              </div>
+              <div className="space-y-1.5">
+                <label className="text-xs font-medium text-muted-foreground">Last Contacted Date</label>
+                <input
+                  type="date"
+                  value={editForm.last_contacted_at || ""}
+                  onChange={(e) => setEditForm({ ...editForm, last_contacted_at: e.target.value })}
+                  className="w-full rounded-lg border border-input bg-card px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-primary/20"
+                />
+              </div>
+              <div className="space-y-1.5">
+                <label className="text-xs font-medium text-muted-foreground">Company Website</label>
+                <input
+                  value={editForm.company_website || ""}
+                  onChange={(e) => setEditForm({ ...editForm, company_website: e.target.value })}
+                  className="w-full rounded-lg border border-input bg-card px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-primary/20"
+                  placeholder="e.g. www.londonspices.com"
+                />
+              </div>
+              <div className="space-y-1.5 sm:col-span-2">
+                <label className="text-xs font-medium text-muted-foreground">Company Address</label>
+                <textarea
+                  value={editForm.company_address || ""}
+                  onChange={(e) => setEditForm({ ...editForm, company_address: e.target.value })}
+                  className="w-full rounded-lg border border-input bg-card px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-primary/20 h-16"
+                />
+              </div>
+              <div className="space-y-1.5 sm:col-span-2">
+                <label className="text-xs font-medium text-muted-foreground">Notes</label>
+                <textarea
+                  value={editForm.notes || ""}
+                  onChange={(e) => setEditForm({ ...editForm, notes: e.target.value })}
+                  className="w-full rounded-lg border border-input bg-card px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-primary/20 h-20"
+                />
+              </div>
+              <div className="flex gap-3 sm:col-span-2 justify-end">
+                <button
+                  type="button"
+                  onClick={() => setIsEditing(false)}
+                  className="rounded-lg border px-4 py-2 text-sm font-semibold hover:bg-muted cursor-pointer"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  className="rounded-lg bg-primary px-5 py-2 text-sm font-semibold text-primary-foreground hover:bg-primary/90 cursor-pointer"
+                >
+                  Save Changes
+                </button>
+              </div>
+            </form>
+          ) : (
+            <div className="p-6 space-y-6">
+              <div className="grid gap-4 sm:grid-cols-2 text-sm border-b pb-6">
+                <div>
+                  <p className="text-xs text-muted-foreground">Contact Name</p>
+                  <p className="font-semibold mt-0.5">{selectedLead.name}</p>
+                </div>
+                <div>
+                  <p className="text-xs text-muted-foreground">Company Name</p>
+                  <p className="font-semibold mt-0.5">{selectedLead.company || "N/A"}</p>
+                </div>
+                <div>
+                  <p className="text-xs text-muted-foreground">Email</p>
+                  <p className="font-semibold mt-0.5">{selectedLead.email || "N/A"}</p>
+                </div>
+                <div>
+                  <p className="text-xs text-muted-foreground">Phone</p>
+                  <p className="font-semibold mt-0.5">
+                    {selectedLead.phone ? `${selectedLead.phone_country_code || "+91"} ${selectedLead.phone}` : "N/A"}
+                  </p>
+                </div>
+                <div>
+                  <p className="text-xs text-muted-foreground">Lead Source</p>
+                  <p className="font-semibold mt-0.5">{selectedLead.lead_source || "N/A"}</p>
+                </div>
+                <div>
+                  <p className="text-xs text-muted-foreground">Status</p>
+                  <span className="inline-block rounded-full bg-secondary px-3 py-1 text-xs font-semibold uppercase mt-1">
+                    {selectedLead.lead_status || "new"}
+                  </span>
+                </div>
+                <div>
+                  <p className="text-xs text-muted-foreground">Last Contacted</p>
+                  <p className="font-semibold mt-0.5">
+                    {selectedLead.last_contacted_at ? new Date(selectedLead.last_contacted_at).toLocaleDateString() : "Never"}
+                  </p>
+                </div>
+                <div>
+                  <p className="text-xs text-muted-foreground">Next Follow-up</p>
+                  <p className="font-semibold mt-0.5">
+                    {selectedLead.next_follow_up_date ? new Date(selectedLead.next_follow_up_date).toLocaleDateString() : "Not scheduled"}
+                  </p>
+                </div>
+                <div>
+                  <p className="text-xs text-muted-foreground">Company Website</p>
+                  <p className="font-semibold mt-0.5 font-mono text-xs">
+                    {selectedLead.company_website ? (
+                      <a href={`https://${selectedLead.company_website}`} target="_blank" rel="noopener noreferrer" className="text-primary hover:underline">
+                        {selectedLead.company_website}
+                      </a>
+                    ) : "N/A"}
+                  </p>
+                </div>
+                <div>
+                  <p className="text-xs text-muted-foreground">Company Address</p>
+                  <p className="font-semibold mt-0.5 whitespace-pre-wrap">{selectedLead.company_address || "N/A"}</p>
+                </div>
+                <div className="sm:col-span-2">
+                  <p className="text-xs text-muted-foreground">Notes</p>
+                  <p className="mt-1 p-3 bg-muted/40 rounded-lg whitespace-pre-wrap">{selectedLead.notes || "No notes."}</p>
+                </div>
+              </div>
+
+              <div className="flex flex-wrap items-center justify-between gap-4">
+                <div className="flex items-center gap-2">
+                  <span className="text-xs font-semibold uppercase tracking-wider text-muted-foreground mr-2">Update Status:</span>
+                  <button
+                    onClick={() => updateLeadStatusDirectly(selectedLead.id, "qualified")}
+                    className="rounded-lg border border-primary/40 bg-primary/5 px-4 py-2 text-sm font-semibold text-primary hover:bg-primary/10 cursor-pointer"
+                  >
+                    Qualified
+                  </button>
+                  <button
+                    onClick={() => updateLeadStatusDirectly(selectedLead.id, "won")}
+                    className="rounded-lg border border-green-500 bg-green-50 px-4 py-2 text-sm font-semibold text-green-700 hover:bg-green-100 cursor-pointer"
+                  >
+                    Won
+                  </button>
+                  <button
+                    onClick={() => updateLeadStatusDirectly(selectedLead.id, "lost")}
+                    className="rounded-lg border border-red-500 bg-red-50 px-4 py-2 text-sm font-semibold text-red-700 hover:bg-red-100 cursor-pointer"
+                  >
+                    Lost
+                  </button>
+                </div>
+
+                {selectedLead.lead_status === "won" && (
+                  <button
+                    onClick={() => convertLeadToCustomer(selectedLead)}
+                    className="rounded-lg bg-green-600 px-6 py-2.5 text-sm font-bold text-white shadow-soft hover:bg-green-700 transition-colors cursor-pointer"
+                  >
+                    Convert to Customer
+                  </button>
+                )}
+              </div>
+            </div>
+          )}
+        </Panel>
+      ) : showForm ? (
         <Panel title="Record New Lead Prospect">
           <form onSubmit={onSubmit} className="grid gap-4 p-6 sm:grid-cols-2">
             <div className="space-y-1.5">
@@ -1871,11 +2609,61 @@ export function CrmModule() {
             </div>
             <div className="space-y-1.5">
               <label className="text-sm font-medium">Phone Number</label>
-              <input
-                value={form.phone}
-                onChange={(e) => setForm({ ...form, phone: e.target.value })}
+              <div className="flex gap-2">
+                <select
+                  value={form.phone_country_code}
+                  onChange={(e) => setForm({ ...form, phone_country_code: e.target.value })}
+                  className="rounded-lg border border-input bg-card px-2 py-2 text-sm outline-none focus:ring-2 focus:ring-primary/20"
+                >
+                  <option value="+91">+91 (IN)</option>
+                  <option value="+1">+1 (US)</option>
+                  <option value="+44">+44 (UK)</option>
+                  <option value="+971">+971 (UAE)</option>
+                </select>
+                <input
+                  value={form.phone}
+                  onChange={(e) => setForm({ ...form, phone: e.target.value })}
+                  className="w-full rounded-lg border border-input bg-card px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-primary/20"
+                  placeholder="20-7946-0958"
+                />
+              </div>
+            </div>
+            <div className="space-y-1.5">
+              <label className="text-sm font-medium">Lead Source</label>
+              <select
+                value={form.lead_source}
+                onChange={(e) => setForm({ ...form, lead_source: e.target.value })}
                 className="w-full rounded-lg border border-input bg-card px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-primary/20"
-                placeholder="+44 20-7946-0958"
+              >
+                {["Website", "Referral", "Trade Fair", "LinkedIn", "Direct Contact"].map((s) => (
+                  <option key={s} value={s}>{s}</option>
+                ))}
+              </select>
+            </div>
+            <div className="space-y-1.5">
+              <label className="text-sm font-medium">Next Follow-up Date</label>
+              <input
+                type="date"
+                value={form.next_follow_up_date}
+                onChange={(e) => setForm({ ...form, next_follow_up_date: e.target.value })}
+                className="w-full rounded-lg border border-input bg-card px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-primary/20"
+              />
+            </div>
+            <div className="space-y-1.5">
+              <label className="text-sm font-medium">Company Website</label>
+              <input
+                value={form.company_website}
+                onChange={(e) => setForm({ ...form, company_website: e.target.value })}
+                className="w-full rounded-lg border border-input bg-card px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-primary/20"
+                placeholder="e.g. www.londonspices.com"
+              />
+            </div>
+            <div className="space-y-1.5 sm:col-span-2">
+              <label className="text-sm font-medium">Company Address</label>
+              <textarea
+                value={form.company_address}
+                onChange={(e) => setForm({ ...form, company_address: e.target.value })}
+                className="w-full rounded-lg border border-input bg-card px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-primary/20 h-16"
               />
             </div>
             <div className="space-y-1.5 sm:col-span-2">
@@ -1883,12 +2671,12 @@ export function CrmModule() {
               <textarea
                 value={form.notes}
                 onChange={(e) => setForm({ ...form, notes: e.target.value })}
-                className="w-full rounded-lg border border-input bg-card px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-primary/20 h-24"
+                className="w-full rounded-lg border border-input bg-card px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-primary/20 h-20"
               />
             </div>
             <button
               type="submit"
-              className="w-full rounded-lg bg-primary py-2.5 text-sm font-semibold text-primary-foreground sm:col-span-2"
+              className="w-full rounded-lg bg-primary py-2.5 text-sm font-semibold text-primary-foreground sm:col-span-2 cursor-pointer"
             >
               Add Lead to CRM
             </button>
@@ -1903,8 +2691,8 @@ export function CrmModule() {
               icon={Target}
               tone="primary"
             />
-            <StatCard label="Scheduled followups" value="8 deals" icon={Bell} tone="accent" />
-            <StatCard label="Pipeline status" value="Active" icon={ShieldCheck} tone="brown" />
+            <StatCard label="Today's Follow-ups" value={`${todaysFollowups} leads`} icon={Bell} tone="accent" />
+            <StatCard label="Pipeline Status" value="Active" icon={ShieldCheck} tone="brown" />
           </div>
           <DataTable columns={columns} data={data} emptyLabel="No leads captured." />
         </>

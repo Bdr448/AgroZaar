@@ -2,10 +2,10 @@ import { Check } from "lucide-react";
 import founder from "@/assets/founder.jpg.asset.json";
 
 const points = [
-  "Specialized in turmeric, chilli, coriander, cumin, garam masala & custom blends",
-  "Serving B2B, distributors, retailers and export buyers",
-  "Modern processing techniques with traditional purity",
-  "Hygiene, consistency and customer satisfaction in every batch",
+  "Directly sourced from Deesa Mandi & partner farmers in North Gujarat",
+  "Milled using Volatile Oil Retention (VOR) cool-grinding technology",
+  "100% sortex clean, free from artificial colors, starch, or chemical fillers",
+  "Sturdy double-walled packaging designed for international B2B shipments",
 ];
 
 interface AboutProps {
@@ -15,8 +15,8 @@ interface AboutProps {
 }
 
 export function About({ title, text, imageUrl }: AboutProps) {
-  const displayTitle = title || "A growing name in the Indian spice industry";
-  const displayConfigText = text || "Agrozaar Foods LLP is a spice manufacturing and export company committed to delivering high-quality, pure and authentic spices under its flagship brand Aviraaj. We bring the true taste of Indian spices to every kitchen — domestic and international.";
+  const displayTitle = title || "Our Story: Bridging Indian Farms to Global Tables";
+  const displayConfigText = text || "Agrozaar Foods LLP was born out of the fertile soil of Deesa, Gujarat. Founded by Sharad Patel, whose family has farmed in Banaskantha for generations, our mission is to deliver pure, unadulterated spices under our flagship brand Aviraaj. By sourcing directly from regional farms, we ensure that every batch of turmeric, cumin, and chilli retains its natural oils and export-grade purity.";
   const displayImage = imageUrl || founder.url;
 
   return (
