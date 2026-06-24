@@ -1,13 +1,31 @@
 const { Client } = require("pg");
 
-const client = new Client({
-  host: "aws-0-ap-northeast-1.pooler.supabase.com",
-  port: 5432, // session port
-  database: "postgres",
-  user: "postgres.wefogwllfidvnkxgswjd",
-  password: "Bhavya@12345@",
-  ssl: { rejectUnauthorized: false },
-});
+const configs = [
+  {
+    host: "db.wefogwllfidvnkxgswjd.supabase.co",
+    port: 5432,
+    database: "postgres",
+    user: "postgres.wefogwllfidvnkxgswjd",
+    password: "Bhavya@12345@",
+    ssl: { rejectUnauthorized: false },
+  },
+  {
+    host: "aws-0-ap-northeast-1.pooler.supabase.com",
+    port: 6543,
+    database: "postgres",
+    user: "postgres.wefogwllfidvnkxgswjd",
+    password: "Bhavya@12345@",
+    ssl: { rejectUnauthorized: false },
+  },
+  {
+    host: "aws-0-ap-northeast-1.pooler.supabase.com",
+    port: 6543,
+    database: "postgres",
+    user: "postgres.wefogwllfidvnkxgswjd",
+    password: "Bhavya@12345@",
+    ssl: false,
+  }
+];
 
 const statements = [
   "ALTER TABLE public.customers ADD COLUMN IF NOT EXISTS is_lead BOOLEAN NOT NULL DEFAULT TRUE;",
@@ -27,27 +45,39 @@ const statements = [
   "UPDATE public.customers SET is_lead = false WHERE is_lead IS NULL;"
 ];
 
-async function main() {
-  console.log("Connecting directly to Supabase on port 5432...");
+async function runMigrationWithConfig(config, index) {
+  const client = new Client(config);
+  console.log(`[Config ${index + 1}/${configs.length}] Trying host ${config.host}:${config.port}...`);
   await client.connect();
   console.log("Connected successfully!");
 
   for (let i = 0; i < statements.length; i++) {
     const stmt = statements[i];
     console.log(`[Step ${i+1}/${statements.length}] Running: ${stmt}`);
-    try {
-      const res = await client.query(stmt);
-      console.log(`Success! (Rows affected: ${res.rowCount})`);
-    } catch (err) {
-      console.error(`Error on step ${i+1}:`, err.message);
-    }
+    const res = await client.query(stmt);
+    console.log(`Success! (Rows affected: ${res.rowCount})`);
   }
 
   await client.end();
-  console.log("Done!");
+  console.log("Migration completed successfully!");
+}
+
+async function main() {
+  let lastError = null;
+  for (let i = 0; i < configs.length; i++) {
+    try {
+      await runMigrationWithConfig(configs[i], i);
+      return; // Success! Exit early
+    } catch (err) {
+      console.warn(`Config ${i + 1} failed: ${err.message}`);
+      lastError = err;
+    }
+  }
+  throw new Error(`All connection configurations failed. Last error: ${lastError ? lastError.message : "None"}`);
 }
 
 main().catch((err) => {
   console.error("Migration warning (expected if local PG port is blocked):", err.message);
   process.exit(0);
 });
+
