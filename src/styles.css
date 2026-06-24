@@ -48,53 +48,53 @@
   --color-sidebar-accent: var(--sidebar-accent);
   --color-sidebar-border: var(--sidebar-border);
 
-  --shadow-soft: 0 1px 2px -1px rgb(60 40 30 / 0.06), 0 8px 24px -12px rgb(60 40 30 / 0.10);
-  --shadow-card: 0 2px 4px -2px rgb(60 40 30 / 0.06), 0 18px 40px -20px rgb(60 40 30 / 0.14);
-  --shadow-glow: 0 20px 50px -24px rgb(217 119 6 / 0.40);
+  --shadow-soft: 0 1px 2px -1px rgb(30 41 59 / 0.04), 0 8px 24px -12px rgb(30 41 59 / 0.08);
+  --shadow-card: 0 2px 4px -2px rgb(30 41 59 / 0.04), 0 18px 40px -20px rgb(30 41 59 / 0.12);
+  --shadow-glow: 0 20px 50px -24px rgb(37 99 235 / 0.30);
 }
 
 :root {
   --radius: 0.75rem;
 
-  --background: oklch(0.985 0.015 75); /* Warm soft cream / linen */
-  --foreground: oklch(0.20 0.03 45); /* Earthy clay charcoal / dark brown */
+  --background: oklch(0.985 0.01 245); /* Soft, warm slate-grey-blue tint */
+  --foreground: oklch(0.20 0.05 250); /* Deep indigo charcoal for body text */
 
-  --card: oklch(1 0.002 75);
-  --card-foreground: oklch(0.20 0.03 45);
-  --popover: oklch(1 0.002 75);
-  --popover-foreground: oklch(0.20 0.03 45);
+  --card: oklch(1 0.002 245);
+  --card-foreground: oklch(0.20 0.05 250);
+  --popover: oklch(1 0.002 245);
+  --popover-foreground: oklch(0.20 0.05 250);
 
-  --primary: oklch(0.68 0.17 48); /* Warm Turmeric Saffron Orange */
-  --primary-foreground: oklch(0.99 0.005 75);
+  --primary: oklch(0.56 0.18 250); /* Vibrant Royal Blue / Indigo */
+  --primary-foreground: oklch(0.99 0.005 250);
 
-  --secondary: oklch(0.96 0.025 75); /* Light warm sand background */
-  --secondary-foreground: oklch(0.25 0.06 45);
+  --secondary: oklch(0.95 0.015 245); /* Soft sky-slate tint background */
+  --secondary-foreground: oklch(0.30 0.07 250);
 
-  --muted: oklch(0.94 0.02 75);
-  --muted-foreground: oklch(0.45 0.04 60);
+  --muted: oklch(0.94 0.012 245);
+  --muted-foreground: oklch(0.45 0.03 245);
 
-  --accent: oklch(0.52 0.20 30); /* Rich Chilli pepper red */
-  --accent-foreground: oklch(0.99 0.005 75);
+  --accent: oklch(0.74 0.14 85); /* Elegant saffron gold/amber */
+  --accent-foreground: oklch(0.15 0.04 85);
 
-  --destructive: oklch(0.50 0.22 25);
-  --destructive-foreground: oklch(0.99 0.005 75);
+  --destructive: oklch(0.55 0.20 25);
+  --destructive-foreground: oklch(0.99 0.005 25);
 
-  --border: oklch(0.88 0.03 75); /* Light warm gray-clay border */
-  --input: oklch(0.88 0.03 75);
-  --ring: oklch(0.68 0.17 48);
+  --border: oklch(0.90 0.02 245); /* Soft gray-blue border */
+  --input: oklch(0.90 0.02 245);
+  --ring: oklch(0.56 0.18 250);
 
-  --brand: oklch(0.68 0.17 48);
-  --brand-foreground: oklch(0.99 0.005 75);
-  --spice-brown: oklch(0.28 0.06 50); /* Rich clay brown */
-  --olive: oklch(0.48 0.12 120); /* Earthy sage green */
-  --beige: oklch(0.92 0.04 80); /* Soft beige */
+  --brand: oklch(0.56 0.18 250);
+  --brand-foreground: oklch(0.99 0.005 250);
+  --spice-brown: oklch(0.22 0.06 250); /* Midnight Navy Blue for titles */
+  --olive: oklch(0.48 0.12 120);
+  --beige: oklch(0.92 0.04 80);
 
-  /* ERP sidebar - Dark Roasted Coffee / Black Clay */
-  --sidebar: oklch(0.18 0.02 50);
-  --sidebar-foreground: oklch(0.92 0.015 75);
-  --sidebar-muted: oklch(0.65 0.02 75);
-  --sidebar-accent: oklch(0.24 0.03 50);
-  --sidebar-border: oklch(0.22 0.02 50);
+  /* ERP sidebar - Dark Roasted Midnight Navy */
+  --sidebar: oklch(0.18 0.03 250);
+  --sidebar-foreground: oklch(0.92 0.015 250);
+  --sidebar-muted: oklch(0.65 0.02 250);
+  --sidebar-accent: oklch(0.24 0.04 250);
+  --sidebar-border: oklch(0.22 0.03 250);
 }
 
 @layer base {
