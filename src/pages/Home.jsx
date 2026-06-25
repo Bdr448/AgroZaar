@@ -142,6 +142,15 @@ export default function HomePage() {
               <p className="text-sm text-muted-foreground leading-relaxed">
                 {settings?.hero_subtitle || "Sourced straight from the organic fields of Deesa, Gujarat. Processed with low-temperature cool-grinding to preserve natural volatile oils, purity, and rich aroma — certified export-grade under flagship brand Aviraaj."}
               </p>
+              {settings?.hero_image_url && (
+                <div className="rounded-2xl overflow-hidden border border-border shadow-soft w-full h-36 mt-2">
+                  <img
+                    src={settings.hero_image_url}
+                    alt="Agrozaar Banner"
+                    className="w-full h-full object-cover"
+                  />
+                </div>
+              )}
               <div className="flex flex-wrap gap-4 text-xs font-bold text-foreground/80 pt-1">
                 <span className="flex items-center gap-1">🛡️ Lab Tested</span>
                 <span className="flex items-center gap-1">🌍 Export Grade</span>

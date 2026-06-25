@@ -2671,19 +2671,29 @@ function AccountsModule() {
 }
 
 /* ── Landing Page Editor module ── */
+const defaultSpices = [
+  { name: "Turmeric Powder", desc: "Vibrant golden color with high curcumin content and rich earthy aroma.", image_url: "" },
+  { name: "Chilli Powder", desc: "Natural red color and balanced heat, milled from premium-grade chillies.", image_url: "" },
+  { name: "Coriander Powder", desc: "Freshly ground from sorted seeds for a fragrant, citrusy flavor.", image_url: "" },
+  { name: "Cumin Powder", desc: "Warm, nutty and aromatic — a kitchen and processing essential.", image_url: "" },
+  { name: "Garam Masala", desc: "Signature blend of whole spices for authentic depth and warmth.", image_url: "" }
+];
+
+const defaultExportCountries = ["UAE", "USA", "UK", "Canada", "Australia", "Saudi Arabia", "Singapore", "Malaysia"];
+
 function LandingPageEditorModule() {
   const session = useSession();
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [settings, setSettings] = useState<any>({
-    hero_title: "",
-    hero_subtitle: "",
+    hero_title: "Pure Spices Direct From India's Golden Farming Belts",
+    hero_subtitle: "Sourced straight from the organic fields of Deesa, Gujarat. Processed with low-temperature cool-grinding to preserve natural volatile oils, purity, and rich aroma — certified export-grade under flagship brand Aviraaj.",
     hero_image_url: "",
-    about_title: "",
-    about_text: "",
+    about_title: "Our Story: Bridging Indian Farms to Global Tables",
+    about_text: "Agrozaar Foods LLP was born out of the fertile soil of Deesa, Gujarat. Founded by Sharad Patel, whose family has farmed in Banaskantha for generations, our mission is to deliver pure, unadulterated spices under our flagship brand Aviraaj. By sourcing directly from regional farms, we ensure that every batch of turmeric, cumin, and chilli retains its natural oils and export-grade purity.",
     about_image_url: "",
-    products_data: [],
-    export_countries: [],
+    products_data: defaultSpices,
+    export_countries: defaultExportCountries,
   });
 
   const [activeTab, setActiveTab] = useState<"hero" | "about" | "spices" | "countries">("hero");
@@ -2707,8 +2717,12 @@ function LandingPageEditorModule() {
       if (data) {
         setSettings({
           ...data,
-          products_data: data.products_data || [],
-          export_countries: data.export_countries || [],
+          hero_title: data.hero_title || "Pure Spices Direct From India's Golden Farming Belts",
+          hero_subtitle: data.hero_subtitle || "Sourced straight from the organic fields of Deesa, Gujarat. Processed with low-temperature cool-grinding to preserve natural volatile oils, purity, and rich aroma — certified export-grade under flagship brand Aviraaj.",
+          about_title: data.about_title || "Our Story: Bridging Indian Farms to Global Tables",
+          about_text: data.about_text || "Agrozaar Foods LLP was born out of the fertile soil of Deesa, Gujarat. Founded by Sharad Patel, whose family has farmed in Banaskantha for generations, our mission is to deliver pure, unadulterated spices under our flagship brand Aviraaj. By sourcing directly from regional farms, we ensure that every batch of turmeric, cumin, and chilli retains its natural oils and export-grade purity.",
+          products_data: (data.products_data && data.products_data.length > 0) ? data.products_data : defaultSpices,
+          export_countries: (data.export_countries && data.export_countries.length > 0) ? data.export_countries : defaultExportCountries,
         });
       }
     } catch (err: any) {
@@ -2784,6 +2798,26 @@ function LandingPageEditorModule() {
     toast.info("Spice removed from local list.");
   };
 
+  const updateSpiceField = (index: number, field: string, value: any) => {
+    const updatedSpices = settings.products_data.map((spice: any, idx: number) => {
+      if (idx === index) {
+        return { ...spice, [field]: value };
+      }
+      return spice;
+    });
+    setSettings({ ...settings, products_data: updatedSpices });
+  };
+
+  const handleSpiceImageUpload = (index: number, file: File) => {
+    const reader = new FileReader();
+    reader.onloadend = () => {
+      const base64String = reader.result as string;
+      updateSpiceField(index, "image_url", base64String);
+      toast.success("Spice image updated locally! Don't forget to click 'Save Changes'.");
+    };
+    reader.readAsDataURL(file);
+  };
+
   const addCountry = () => {
     const c = newCountry.trim();
     if (!c) return;
@@ -2833,13 +2867,36 @@ function LandingPageEditorModule() {
         title="Landing Page Editor"
         subtitle="Manage home page content, photos, spices list, and export statistics"
         action={
-          <button
-            onClick={handleSave}
-            disabled={saving}
-            className="inline-flex items-center gap-1.5 rounded-lg bg-primary px-4 py-2 text-sm font-semibold text-primary-foreground shadow-soft hover:bg-primary/90 transition-colors disabled:opacity-50"
-          >
-            {saving ? "Saving..." : "Save Changes"}
-          </button>
+          <div className="flex gap-2">
+            <button
+              onClick={() => {
+                if (window.confirm("Are you sure you want to reset all fields to system defaults? (This will not save to the database until you click 'Save Changes')")) {
+                  setSettings({
+                    ...settings,
+                    hero_title: "Pure Spices Direct From India's Golden Farming Belts",
+                    hero_subtitle: "Sourced straight from the organic fields of Deesa, Gujarat. Processed with low-temperature cool-grinding to preserve natural volatile oils, purity, and rich aroma — certified export-grade under flagship brand Aviraaj.",
+                    hero_image_url: "",
+                    about_title: "Our Story: Bridging Indian Farms to Global Tables",
+                    about_text: "Agrozaar Foods LLP was born out of the fertile soil of Deesa, Gujarat. Founded by Sharad Patel, whose family has farmed in Banaskantha for generations, our mission is to deliver pure, unadulterated spices under our flagship brand Aviraaj. By sourcing directly from regional farms, we ensure that every batch of turmeric, cumin, and chilli retains its natural oils and export-grade purity.",
+                    about_image_url: "",
+                    products_data: defaultSpices,
+                    export_countries: defaultExportCountries,
+                  });
+                  toast.info("Fields reset to defaults locally. Click 'Save Changes' to apply.");
+                }
+              }}
+              className="inline-flex items-center gap-1.5 rounded-lg border border-border bg-card px-4 py-2 text-sm font-semibold text-foreground hover:bg-secondary transition-colors"
+            >
+              Reset to Defaults
+            </button>
+            <button
+              onClick={handleSave}
+              disabled={saving}
+              className="inline-flex items-center gap-1.5 rounded-lg bg-primary px-4 py-2 text-sm font-semibold text-primary-foreground shadow-soft hover:bg-primary/90 transition-colors disabled:opacity-50"
+            >
+              {saving ? "Saving..." : "Save Changes"}
+            </button>
+          </div>
         }
       />
 
@@ -2897,15 +2954,29 @@ function LandingPageEditorModule() {
                 <div className="space-y-2">
                   <label className="text-sm font-medium">Hero Image Banner</label>
                   <div className="flex flex-col sm:flex-row gap-4 items-start">
-                    <input
-                      type="file"
-                      accept="image/*"
-                      onChange={(e) => {
-                        const file = e.target.files?.[0];
-                        if (file) handleImageUpload("hero_image_url", file);
-                      }}
-                      className="text-xs"
-                    />
+                    <div className="flex gap-2">
+                      <label className="cursor-pointer inline-flex items-center gap-1.5 rounded-lg border border-border bg-card px-3 py-2 text-xs font-semibold hover:bg-secondary transition-colors">
+                        <span>Upload Banner Image</span>
+                        <input
+                          type="file"
+                          accept="image/*"
+                          onChange={(e) => {
+                            const file = e.target.files?.[0];
+                            if (file) handleImageUpload("hero_image_url", file);
+                          }}
+                          className="hidden"
+                        />
+                      </label>
+                      {settings.hero_image_url && (
+                        <button
+                          type="button"
+                          onClick={() => setSettings({ ...settings, hero_image_url: "" })}
+                          className="rounded-lg border border-red-200 bg-red-50 text-red-600 px-3 py-2 text-xs font-semibold hover:bg-red-100 transition-colors"
+                        >
+                          Remove Image
+                        </button>
+                      )}
+                    </div>
                     <div className="relative rounded-lg overflow-hidden border border-border max-w-[240px]">
                       <img
                         src={settings.hero_image_url || heroImg}
@@ -2952,15 +3023,29 @@ function LandingPageEditorModule() {
                 <div className="space-y-2">
                   <label className="text-sm font-medium">Founder Photo</label>
                   <div className="flex flex-col sm:flex-row gap-4 items-start">
-                    <input
-                      type="file"
-                      accept="image/*"
-                      onChange={(e) => {
-                        const file = e.target.files?.[0];
-                        if (file) handleImageUpload("about_image_url", file);
-                      }}
-                      className="text-xs"
-                    />
+                    <div className="flex gap-2">
+                      <label className="cursor-pointer inline-flex items-center gap-1.5 rounded-lg border border-border bg-card px-3 py-2 text-xs font-semibold hover:bg-secondary transition-colors">
+                        <span>Upload Photo</span>
+                        <input
+                          type="file"
+                          accept="image/*"
+                          onChange={(e) => {
+                            const file = e.target.files?.[0];
+                            if (file) handleImageUpload("about_image_url", file);
+                          }}
+                          className="hidden"
+                        />
+                      </label>
+                      {settings.about_image_url && (
+                        <button
+                          type="button"
+                          onClick={() => setSettings({ ...settings, about_image_url: "" })}
+                          className="rounded-lg border border-red-200 bg-red-50 text-red-600 px-3 py-2 text-xs font-semibold hover:bg-red-100 transition-colors"
+                        >
+                          Remove Photo
+                        </button>
+                      )}
+                    </div>
                     <div className="relative rounded-lg overflow-hidden border border-border max-w-[200px]">
                       <img
                         src={settings.about_image_url || founder.url}
@@ -3004,18 +3089,28 @@ function LandingPageEditorModule() {
                   <div className="space-y-2 sm:col-span-2">
                     <label className="text-sm font-medium">Product Photo (Optional)</label>
                     <div className="flex flex-col sm:flex-row gap-4 items-start">
-                      <input
-                        type="file"
-                        accept="image/*"
-                        onChange={(e) => {
-                          const file = e.target.files?.[0];
-                          if (file) handleImageUpload("new_spice_image", file);
-                        }}
-                        className="text-xs"
-                      />
+                      <label className="cursor-pointer inline-flex items-center gap-1.5 rounded-lg border border-border bg-card px-3 py-2 text-xs font-semibold hover:bg-secondary transition-colors">
+                        <span>Upload Product Photo</span>
+                        <input
+                          type="file"
+                          accept="image/*"
+                          onChange={(e) => {
+                            const file = e.target.files?.[0];
+                            if (file) handleImageUpload("new_spice_image", file);
+                          }}
+                          className="hidden"
+                        />
+                      </label>
                       {newSpice.image_url && (
                         <div className="relative rounded-lg overflow-hidden border border-border max-w-[150px]">
                           <img src={newSpice.image_url} alt="New spice preview" className="w-full h-auto object-cover max-h-24" />
+                          <button
+                            type="button"
+                            onClick={() => setNewSpice({ ...newSpice, image_url: "" })}
+                            className="text-[10px] text-red-500 hover:underline mt-1 block text-left font-bold"
+                          >
+                            Remove Photo
+                          </button>
                         </div>
                       )}
                     </div>
@@ -3042,22 +3137,67 @@ function LandingPageEditorModule() {
                     {settings.products_data.map((spice: any, idx: number) => (
                       <div key={idx} className="relative rounded-xl border border-border bg-card p-4 flex flex-col justify-between shadow-soft">
                         <button
+                          type="button"
                           onClick={() => removeSpice(idx)}
-                          className="absolute top-2 right-2 text-red-500 hover:text-red-700 bg-secondary p-1 rounded-full"
+                          className="absolute top-2 right-2 text-red-500 hover:text-red-700 bg-secondary p-1 rounded-full z-10"
                           title="Remove spice"
                         >
                           <Trash2 className="h-4 w-4" />
                         </button>
-                        <div>
-                          <div className="rounded-lg overflow-hidden mb-3 border border-border h-24 bg-secondary">
+                        <div className="space-y-3">
+                          <div className="rounded-lg overflow-hidden border border-border h-24 bg-secondary relative group">
                             <img
                               src={spice.image_url || defaultSpiceImages[idx % defaultSpiceImages.length]}
                               alt={spice.name}
                               className="w-full h-full object-cover"
                             />
+                            <label
+                              htmlFor={`spice-img-${idx}`}
+                              className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 flex items-center justify-center text-[10px] text-white font-bold cursor-pointer transition-opacity"
+                            >
+                              Change Image
+                            </label>
+                            <input
+                              id={`spice-img-${idx}`}
+                              type="file"
+                              accept="image/*"
+                              className="hidden"
+                              onChange={(e) => {
+                                const file = e.target.files?.[0];
+                                if (file) handleSpiceImageUpload(idx, file);
+                              }}
+                            />
                           </div>
-                          <h4 className="font-heading font-bold text-spice-brown text-base">{spice.name}</h4>
-                          <p className="text-xs text-muted-foreground mt-1.5 line-clamp-3">{spice.desc}</p>
+
+                          {spice.image_url && (
+                            <button
+                              type="button"
+                              onClick={() => updateSpiceField(idx, "image_url", "")}
+                              className="text-[10px] text-red-500 hover:underline block text-left font-semibold"
+                            >
+                              Reset to default photo
+                            </button>
+                          )}
+                          
+                          <div className="space-y-1">
+                            <label className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">Spice Name</label>
+                            <input
+                              type="text"
+                              value={spice.name}
+                              onChange={(e) => updateSpiceField(idx, "name", e.target.value)}
+                              className="w-full rounded-md border border-input bg-background px-2 py-1 text-xs outline-none focus:ring-1 focus:ring-primary"
+                            />
+                          </div>
+
+                          <div className="space-y-1">
+                            <label className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">Description</label>
+                            <textarea
+                              value={spice.desc}
+                              rows={2}
+                              onChange={(e) => updateSpiceField(idx, "desc", e.target.value)}
+                              className="w-full rounded-md border border-input bg-background px-2 py-1 text-xs outline-none focus:ring-1 focus:ring-primary resize-none"
+                            />
+                          </div>
                         </div>
                       </div>
                     ))}
