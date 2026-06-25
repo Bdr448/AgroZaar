@@ -7,6 +7,7 @@ ALTER TABLE public.customers ADD COLUMN IF NOT EXISTS company_address TEXT;
 ALTER TABLE public.customers ADD COLUMN IF NOT EXISTS company_website TEXT;
 ALTER TABLE public.customers ADD COLUMN IF NOT EXISTS phone_country_code TEXT DEFAULT '+91';
 ALTER TABLE public.customers ADD COLUMN IF NOT EXISTS next_follow_up_date DATE;
+ALTER TABLE public.customers ADD COLUMN IF NOT EXISTS notes TEXT;
 
 -- Customer details
 ALTER TABLE public.customers ADD COLUMN IF NOT EXISTS customer_code TEXT UNIQUE;
