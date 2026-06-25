@@ -1812,7 +1812,7 @@ export function ProductsModule() {
               <input
                 type="number"
                 value={form.gst_rate}
-                onChange={(e) => setForm({ ...form, gst_rate: parseFloat(e.target.value) })}
+                onChange={(e) => setForm({ ...form, gst_rate: parseFloat(e.target.value) || 0 })}
                 className="w-full rounded-lg border border-input bg-card px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-primary/20"
               />
             </div>
@@ -1822,7 +1822,7 @@ export function ProductsModule() {
               <input
                 type="number"
                 value={form.standard_price}
-                onChange={(e) => setForm({ ...form, standard_price: parseFloat(e.target.value) })}
+                onChange={(e) => setForm({ ...form, standard_price: parseFloat(e.target.value) || 0 })}
                 className="w-full rounded-lg border border-input bg-card px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-primary/20"
               />
             </div>
@@ -1832,7 +1832,7 @@ export function ProductsModule() {
                 type="number"
                 value={form.distributor_price}
                 onChange={(e) =>
-                  setForm({ ...form, distributor_price: parseFloat(e.target.value) })
+                  setForm({ ...form, distributor_price: parseFloat(e.target.value) || 0 })
                 }
                 className="w-full rounded-lg border border-input bg-card px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-primary/20"
               />
@@ -1842,7 +1842,7 @@ export function ProductsModule() {
               <input
                 type="number"
                 value={form.retailer_price}
-                onChange={(e) => setForm({ ...form, retailer_price: parseFloat(e.target.value) })}
+                onChange={(e) => setForm({ ...form, retailer_price: parseFloat(e.target.value) || 0 })}
                 className="w-full rounded-lg border border-input bg-card px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-primary/20"
               />
             </div>
@@ -2040,7 +2040,7 @@ export function InventoryModule() {
                 type="number"
                 step="0.01"
                 value={form.quantity}
-                onChange={(e) => setForm({ ...form, quantity: parseFloat(e.target.value) })}
+                onChange={(e) => setForm({ ...form, quantity: parseFloat(e.target.value) || 0 })}
                 required
                 className="w-full rounded-lg border border-input bg-card px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-primary/20"
               />
@@ -2820,7 +2820,7 @@ export function ProductionModule() {
               <input
                 type="number"
                 value={form.planned_qty}
-                onChange={(e) => setForm({ ...form, planned_qty: parseFloat(e.target.value) })}
+                onChange={(e) => setForm({ ...form, planned_qty: parseFloat(e.target.value) || 0 })}
                 required
                 className="w-full rounded-lg border border-input bg-card px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-primary/20"
               />
@@ -3202,7 +3202,7 @@ export function QcManagementModule() {
                 type="number"
                 step="0.1"
                 value={form.moisture}
-                onChange={(e) => setForm({ ...form, moisture: parseFloat(e.target.value) })}
+                onChange={(e) => setForm({ ...form, moisture: parseFloat(e.target.value) || 0 })}
                 required
                 className="w-full rounded-lg border border-input bg-card px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-primary/20"
               />
@@ -3393,7 +3393,7 @@ export function SalesModule() {
               <input
                 type="number"
                 value={form.grand_total}
-                onChange={(e) => setForm({ ...form, grand_total: parseFloat(e.target.value) })}
+                onChange={(e) => setForm({ ...form, grand_total: parseFloat(e.target.value) || 0 })}
                 required
                 className="w-full rounded-lg border border-input bg-card px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-primary/20"
               />
@@ -3448,7 +3448,7 @@ export function PurchasesModule() {
     // In our double-entry stock structure, purchases are logged under stock movements marked 'purchase'
     const { data: st } = await supabase
       .from("stock_movements")
-      .select("*, products(name, sku), suppliers(*)")
+      .select("*, products(name, sku)")
       .eq("movement_type", "purchase")
       .order("created_at", { ascending: false });
     setData(st || []);
@@ -3566,7 +3566,7 @@ export function PurchasesModule() {
               <input
                 type="number"
                 value={form.quantity}
-                onChange={(e) => setForm({ ...form, quantity: parseFloat(e.target.value) })}
+                onChange={(e) => setForm({ ...form, quantity: parseFloat(e.target.value) || 0 })}
                 required
                 className="w-full rounded-lg border border-input bg-card px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-primary/20"
               />
