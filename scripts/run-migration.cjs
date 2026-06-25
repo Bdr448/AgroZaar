@@ -126,7 +126,49 @@ const statements = [
   "ALTER TABLE public.customers ADD COLUMN IF NOT EXISTS customer_type TEXT CHECK (customer_type IN ('Retailer', 'Distributor', 'Wholesaler', 'Corporate', 'Exporter', 'Other'));",
   "ALTER TABLE public.customers ADD COLUMN IF NOT EXISTS city TEXT;",
   "ALTER TABLE public.customers ADD COLUMN IF NOT EXISTS status TEXT NOT NULL DEFAULT 'active' CHECK (status IN ('active', 'inactive'));",
-  "UPDATE public.customers SET is_lead = false WHERE is_lead IS NULL;"
+  "UPDATE public.customers SET is_lead = false WHERE is_lead IS NULL;",
+
+  // 5. Add soft delete columns
+  "ALTER TABLE public.customers ADD COLUMN IF NOT EXISTS is_deleted BOOLEAN NOT NULL DEFAULT FALSE;",
+  "ALTER TABLE public.suppliers ADD COLUMN IF NOT EXISTS is_deleted BOOLEAN NOT NULL DEFAULT FALSE;",
+  "ALTER TABLE public.products ADD COLUMN IF NOT EXISTS is_deleted BOOLEAN NOT NULL DEFAULT FALSE;",
+
+  // 6. Add missing SELECT policies for RLS tables
+  `DROP POLICY IF EXISTS "Employees select policy" ON public.employees;`,
+  `CREATE POLICY "Employees select policy" ON public.employees FOR SELECT TO authenticated USING (true);`,
+  `DROP POLICY IF EXISTS "Employee salary structure select policy" ON public.employee_salary_structure;`,
+  `CREATE POLICY "Employee salary structure select policy" ON public.employee_salary_structure FOR SELECT TO authenticated USING (true);`,
+  `DROP POLICY IF EXISTS "Payroll runs select policy" ON public.payroll_runs;`,
+  `CREATE POLICY "Payroll runs select policy" ON public.payroll_runs FOR SELECT TO authenticated USING (true);`,
+  `DROP POLICY IF EXISTS "Salary slips select policy" ON public.salary_slips;`,
+  `CREATE POLICY "Salary slips select policy" ON public.salary_slips FOR SELECT TO authenticated USING (true);`,
+  `DROP POLICY IF EXISTS "Stock movements select policy" ON public.stock_movements;`,
+  `CREATE POLICY "Stock movements select policy" ON public.stock_movements FOR SELECT TO authenticated USING (true);`,
+
+  // 7. Allow profile role update and public insert
+  `DROP POLICY IF EXISTS "Users can update their own profile" ON public.user_profiles;`,
+  `CREATE POLICY "Users can update their own profile" ON public.user_profiles FOR UPDATE TO authenticated USING (id = auth.uid()) WITH CHECK (id = auth.uid());`,
+  `DROP POLICY IF EXISTS "Customers public insert policy" ON public.customers;`,
+  `CREATE POLICY "Customers public insert policy" ON public.customers FOR INSERT TO anon, authenticated WITH CHECK (true);`,
+
+  // 8. Create expenses table
+  `CREATE TABLE IF NOT EXISTS public.expenses (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    expense_date DATE NOT NULL DEFAULT CURRENT_DATE,
+    category TEXT NOT NULL,
+    amount NUMERIC(12, 2) NOT NULL,
+    description TEXT,
+    payment_method TEXT NOT NULL,
+    paid_to TEXT,
+    status TEXT NOT NULL DEFAULT 'Approved' CHECK (status IN ('Pending', 'Approved', 'Rejected')),
+    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    created_by UUID REFERENCES public.user_profiles(id)
+  );`,
+  `ALTER TABLE public.expenses ENABLE ROW LEVEL SECURITY;`,
+  `DROP POLICY IF EXISTS "Expenses select policy" ON public.expenses;`,
+  `CREATE POLICY "Expenses select policy" ON public.expenses FOR SELECT TO authenticated USING (true);`,
+  `DROP POLICY IF EXISTS "Expenses write policy" ON public.expenses;`,
+  `CREATE POLICY "Expenses write policy" ON public.expenses FOR ALL TO authenticated USING (public.get_user_role() IN ('super-admin', 'admin', 'partner', 'accountant')) WITH CHECK (public.get_user_role() IN ('super-admin', 'admin', 'partner', 'accountant'));`
 ];
 
 async function runMigrationWithConfig(config, index) {
