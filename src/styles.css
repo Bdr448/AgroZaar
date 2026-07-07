@@ -56,45 +56,49 @@
 :root {
   --radius: 0.75rem;
 
-  --background: oklch(0.985 0.01 245); /* Soft, warm slate-grey-blue tint */
-  --foreground: oklch(0.20 0.05 250); /* Deep indigo charcoal for body text */
+  --background: oklch(1 0.002 245); /* Clean white background */
+  --foreground: oklch(0.15 0.02 250); /* Dark slate gray for text */
 
   --card: oklch(1 0.002 245);
-  --card-foreground: oklch(0.20 0.05 250);
+  --card-foreground: oklch(0.15 0.02 250);
   --popover: oklch(1 0.002 245);
-  --popover-foreground: oklch(0.20 0.05 250);
+  --popover-foreground: oklch(0.15 0.02 250);
 
-  --primary: oklch(0.56 0.18 250); /* Vibrant Royal Blue / Indigo */
-  --primary-foreground: oklch(0.99 0.005 250);
+  --primary: oklch(0.16 0.04 250); /* Dark Navy Blue (#0a1520) */
+  --primary-foreground: oklch(1 0.002 250);
 
-  --secondary: oklch(0.95 0.015 245); /* Soft sky-slate tint background */
-  --secondary-foreground: oklch(0.30 0.07 250);
+  --secondary: oklch(0.97 0.005 250); /* Very light gray/blue background */
+  --secondary-foreground: oklch(0.20 0.04 250);
 
-  --muted: oklch(0.94 0.012 245);
-  --muted-foreground: oklch(0.45 0.03 245);
+  --muted: oklch(0.95 0.005 250);
+  --muted-foreground: oklch(0.45 0.02 250);
 
-  --accent: oklch(0.74 0.14 85); /* Elegant saffron gold/amber */
+  --accent: oklch(0.76 0.15 85); /* Premium Gold (#d4af37) */
   --accent-foreground: oklch(0.15 0.04 85);
 
   --destructive: oklch(0.55 0.20 25);
   --destructive-foreground: oklch(0.99 0.005 25);
 
-  --border: oklch(0.90 0.02 245); /* Soft gray-blue border */
-  --input: oklch(0.90 0.02 245);
-  --ring: oklch(0.56 0.18 250);
+  --border: oklch(0.91 0.01 250); /* Soft gray border */
+  --input: oklch(0.91 0.01 250);
+  --ring: oklch(0.76 0.15 85);
 
-  --brand: oklch(0.56 0.18 250);
-  --brand-foreground: oklch(0.99 0.005 250);
-  --spice-brown: oklch(0.22 0.06 250); /* Midnight Navy Blue for titles */
+  --brand: oklch(0.16 0.04 250);
+  --brand-foreground: oklch(1 0.002 250);
+  --spice-brown: oklch(0.16 0.04 250); /* Remapped titles to dark navy for theme consistency */
   --olive: oklch(0.48 0.12 120);
   --beige: oklch(0.92 0.04 80);
 
-  /* ERP sidebar - Dark Roasted Midnight Navy */
-  --sidebar: oklch(0.18 0.03 250);
+  /* Sidebar - Dark Navy */
+  --sidebar: oklch(0.14 0.03 250);
   --sidebar-foreground: oklch(0.92 0.015 250);
   --sidebar-muted: oklch(0.65 0.02 250);
-  --sidebar-accent: oklch(0.24 0.04 250);
-  --sidebar-border: oklch(0.22 0.03 250);
+  --sidebar-accent: oklch(0.20 0.04 250);
+  --sidebar-border: oklch(0.18 0.03 250);
+
+  /* Custom palette colors */
+  --primary-color: #0a1520;
+  --gold-color: #d4af37;
 }
 
 @layer base {
@@ -149,21 +153,89 @@
     -ms-overflow-style: none;
     scrollbar-width: none;
   }
-  @keyframes marquee {
-    0% {
-      transform: translate3d(0, 0, 0);
-    }
-    100% {
-      transform: translate3d(-50%, 0, 0);
-    }
+
+  /* Custom Scroll animations and styling variables */
+  .primary-bg {
+    background-color: var(--primary-color) !important;
   }
-  .animate-marquee {
-    animation: marquee 30s linear infinite;
+  .bg-gold {
+    background-color: var(--gold-color) !important;
   }
-  .animate-marquee-slow {
-    animation: marquee 45s linear infinite;
+  .text-gold {
+    color: var(--gold-color) !important;
   }
-  .animate-marquee-fast {
-    animation: marquee 20s linear infinite;
+  .border-gold {
+    border-color: var(--gold-color) !important;
+  }
+
+  /* Hover and animation classes */
+  .product-card {
+    transition: all 0.4s ease-in-out;
+  }
+  .product-card:hover {
+    transform: translateY(-15px) scale(1.02);
+    box-shadow: 0 25px 50px rgba(0, 0, 0, 0.15);
+  }
+
+  .card-animate {
+    transition: all 0.4s ease;
+  }
+  .card-animate:hover {
+    transform: translateY(-5px);
+    box-shadow: 0 10px 25px rgba(0, 0, 0, 0.1);
+  }
+
+  .btn-shine {
+    position: relative;
+    overflow: hidden;
+  }
+  .btn-shine::after {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: -50%;
+    width: 200%;
+    height: 100%;
+    background: linear-gradient(
+      to right,
+      rgba(255, 255, 255, 0) 0%,
+      rgba(255, 255, 255, 0.3) 50%,
+      rgba(255, 255, 255, 0) 100%
+    );
+    transform: skewX(-25deg);
+    transition: 0.75s;
+    opacity: 0;
+  }
+  .btn-shine:hover::after {
+    left: 125%;
+    opacity: 1;
+    transition: 0.75s ease-in-out;
+  }
+
+  /* Scroll anim classes */
+  .animate-on-scroll {
+    opacity: 1;
+    transform: translateY(0);
+    transition: all 0.8s ease;
+  }
+  .animate-slide-left {
+    opacity: 1;
+    transform: translateX(0);
+    transition: all 0.8s ease;
+  }
+  .animate-slide-right {
+    opacity: 1;
+    transform: translateX(0);
+    transition: all 0.8s ease;
+  }
+  .animate-fade-in {
+    opacity: 1;
+    transition: opacity 1s ease-out;
+  }
+  .animate-scale-in {
+    opacity: 1;
+    transform: scale(1);
+    transition: all 0.8s ease;
   }
 }
+

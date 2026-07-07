@@ -24,6 +24,7 @@ export function Contact() {
     const company = formData.get("company") as string;
     const email = formData.get("email") as string;
     const phone = formData.get("phone") as string;
+    const message = formData.get("message") as string;
 
     try {
       const { error } = await supabase.from("customers").insert([
@@ -32,8 +33,11 @@ export function Contact() {
           company: company || "Website Inquiry",
           email,
           phone,
+          notes: message,
+          is_lead: true,
         },
       ]);
+
       if (error) {
         console.error("Failed to save lead:", error.message);
       }
@@ -44,123 +48,104 @@ export function Contact() {
   };
 
   return (
-    <section id="contact" className="py-6 md:py-12 bg-secondary/40">
-      <div className="container-x grid gap-6 lg:grid-cols-2 lg:gap-12">
-        <div className="w-full min-w-0">
-          <span className="text-sm font-semibold uppercase tracking-[0.18em] text-primary">
+    <section id="contact" className="py-16 md:py-24 bg-gray-50 text-[#0a1520] text-left border-t border-gray-150">
+      <div className="container-x grid gap-12 lg:grid-cols-2 lg:gap-16">
+        {/* Left Side: Contact Details */}
+        <div className="w-full text-left">
+          <span className="text-xs font-bold uppercase tracking-widest text-[#d4af37]">
             Get in Touch
           </span>
-          <h2 className="mt-4 font-heading text-3xl md:text-4xl font-extrabold text-spice-brown text-balance">
-            Let's discuss your spice requirement
+          <h2 className="text-3xl md:text-4xl font-extrabold mt-3 tracking-tight">
+            Connect With Our designated Export Team
           </h2>
-          <p className="mt-4 text-base text-muted-foreground">
-            Whether you're a distributor, retailer or export buyer, our team will get back to you
-            with a tailored proposal.
+          <div className="w-20 h-1 bg-[#d4af37] mt-4 rounded-full"></div>
+          <p className="mt-6 text-sm md:text-base text-gray-600 leading-relaxed">
+            Distributors, international buyers, and retail chains can request custom packaging specifications, private-label blends, or formal export proposal pricing.
           </p>
 
-          <div className="relative mt-6 overflow-hidden w-full">
-            {/* Gradient Fades */}
-            <div className="absolute left-0 top-0 bottom-0 w-12 md:w-20 bg-gradient-to-r from-background to-transparent z-10 pointer-events-none" />
-            <div className="absolute right-0 top-0 bottom-0 w-12 md:w-20 bg-gradient-to-l from-background to-transparent z-10 pointer-events-none" />
-
-            <div className="flex w-max animate-marquee-slow hover:[animation-play-state:paused] py-2">
-              {/* First Set */}
-              <div className="flex shrink-0">
-                {details.map((d) => (
-                  <a
-                    key={`c1-${d.label}`}
-                    href={d.href ?? "#"}
-                    className="flex items-start gap-3 rounded-xl border border-border bg-card p-4 shadow-soft transition-shadow hover:shadow-card w-[280px] md:w-[320px] shrink-0 mr-4 text-left"
-                  >
-                    <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-primary/10 text-primary">
-                      <d.icon className="h-5 w-5" />
-                    </span>
-                    <div>
-                      <p className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
-                        {d.label}
-                      </p>
-                      <p className="mt-0.5 text-xs font-semibold text-foreground">{d.value}</p>
-                    </div>
-                  </a>
-                ))}
-              </div>
-              {/* Second Set */}
-              <div className="flex shrink-0" aria-hidden="true">
-                {details.map((d) => (
-                  <a
-                    key={`c2-${d.label}`}
-                    href={d.href ?? "#"}
-                    className="flex items-start gap-3 rounded-xl border border-border bg-card p-4 shadow-soft transition-shadow hover:shadow-card w-[280px] md:w-[320px] shrink-0 mr-4 text-left"
-                  >
-                    <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-primary/10 text-primary">
-                      <d.icon className="h-5 w-5" />
-                    </span>
-                    <div>
-                      <p className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
-                        {d.label}
-                      </p>
-                      <p className="mt-0.5 text-xs font-semibold text-foreground">{d.value}</p>
-                    </div>
-                  </a>
-                ))}
-              </div>
-            </div>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mt-8">
+            {details.map((d, i) => (
+              <a
+                key={i}
+                href={d.href ?? "#"}
+                className="flex items-start gap-4 rounded-xl border border-gray-200 bg-white p-5 shadow-sm transition-all duration-300 hover:shadow-md hover:border-[#d4af37]/45"
+              >
+                <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-[#0a1520] text-[#d4af37] border border-white/5 shadow-sm">
+                  <d.icon className="h-5 w-5" />
+                </span>
+                <div>
+                  <p className="text-[10px] font-bold uppercase tracking-wide text-gray-400">
+                    {d.label}
+                  </p>
+                  <p className="mt-1 text-xs md:text-sm font-bold text-gray-800 break-words leading-tight">{d.value}</p>
+                </div>
+              </a>
+            ))}
           </div>
 
-          <a
-            href="https://wa.me/918128853311"
-            target="_blank"
-            rel="noreferrer"
-            className="mt-4 inline-flex items-center gap-2 rounded-lg bg-accent px-5 py-2.5 text-sm font-semibold text-accent-foreground transition-transform hover:-translate-y-0.5"
-          >
-            <MessageCircle className="h-4 w-4" /> Chat on WhatsApp
-          </a>
+          <div className="mt-8 flex flex-wrap gap-4">
+            <a
+              href="https://wa.me/918128853311"
+              target="_blank"
+              rel="noreferrer"
+              className="inline-flex items-center gap-2 rounded-md bg-[#25D366] hover:bg-[#25D366]/90 text-white px-6 py-3 text-sm font-bold shadow-md transition-transform hover:-translate-y-0.5 cursor-pointer"
+            >
+              💬 Chat on WhatsApp
+            </a>
+            <div className="flex items-center text-xs font-semibold text-gray-500 bg-white border border-gray-200 rounded-md px-4 py-3 shadow-sm">
+              🕒 Office Hours: Mon-Sat, 9:30 AM - 7:30 PM
+            </div>
+          </div>
         </div>
 
-        <form
-          onSubmit={onSubmit}
-          className="w-full min-w-0 rounded-2xl border border-border bg-card p-4 sm:p-6 md:p-7 shadow-card flex flex-col text-left"
-        >
-          <h3 className="font-heading text-base sm:text-lg font-bold text-spice-brown text-left">Send an Inquiry</h3>
-          <div className="mt-3 sm:mt-4 flex flex-col gap-2.5 sm:gap-3">
-            <div className="flex flex-col sm:flex-row gap-2.5 sm:gap-3">
-              <div className="flex-1">
+        {/* Right Side: Inquiry Form */}
+        <div className="w-full">
+          <form
+            onSubmit={onSubmit}
+            className="w-full rounded-2xl border border-gray-200 bg-white p-6 sm:p-8 shadow-lg flex flex-col text-left"
+          >
+            <h3 className="font-heading text-lg sm:text-xl font-bold text-[#0a1520] mb-1">
+              Send B2B Export Inquiry
+            </h3>
+            <p className="text-xs text-gray-500 mb-6">
+              Get lab certifications, product catalogs, and custom proposals sent directly to you.
+            </p>
+            <div className="flex flex-col gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <Field label="Full Name" name="name" placeholder="Your name" />
-              </div>
-              <div className="flex-1">
                 <Field label="Company" name="company" placeholder="Company name" required={false} />
               </div>
-            </div>
-            <div className="flex flex-col sm:flex-row gap-2.5 sm:gap-3">
-              <div className="flex-1">
-                <Field label="Email" name="email" type="email" placeholder="you@email.com" />
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <Field label="Email Address" name="email" type="email" placeholder="you@email.com" />
+                <Field label="Phone / WhatsApp" name="phone" placeholder="+91 ..." />
               </div>
-              <div className="flex-1">
-                <Field label="Phone" name="phone" placeholder="+91 ..." />
+              <div className="flex flex-col">
+                <label className="text-xs sm:text-sm font-bold text-gray-700 text-left" htmlFor="message">
+                  Requirement Details
+                </label>
+                <textarea
+                  id="message"
+                  name="message"
+                  rows={3}
+                  required
+                  placeholder="Describe your required spices, quantities, packaging configurations..."
+                  className="mt-2 w-full resize-none rounded-lg border border-gray-200 bg-white px-4 py-3 text-xs sm:text-sm outline-none transition-colors focus:border-[#d4af37] focus:ring-2 focus:ring-[#d4af37]/20 text-left"
+                />
               </div>
+              <button
+                type="submit"
+                className="inline-flex items-center justify-center gap-2 rounded-md bg-[#d4af37] hover:bg-[#d4af37]/90 text-[#0a1520] py-3 text-xs sm:text-sm font-bold shadow-md transition-all duration-300 hover:shadow-[#d4af37]/25 hover:-translate-y-0.5 cursor-pointer btn-shine"
+              >
+                <Send className="h-4 w-4" /> {sent ? "Inquiry Sent Successfully!" : "Submit B2B Inquiry"}
+              </button>
+              {sent && (
+                <p className="text-xs text-emerald-600 font-bold mt-2 text-center">
+                  Thank you! We have received your inquiry. Our partners will reply within 2 hours.
+                </p>
+              )}
             </div>
-            <div className="flex flex-col">
-              <label className="text-xs sm:text-sm font-medium text-foreground/80 text-left" htmlFor="message">
-                Requirement
-              </label>
-              <textarea
-                id="message"
-                name="message"
-                rows={3}
-                required
-                placeholder="Tell us about the products and quantities you need..."
-                className="mt-1 w-full resize-none rounded-lg border border-input bg-background px-3 py-1.5 sm:px-4 sm:py-2 text-xs sm:text-sm outline-none transition-colors focus:border-primary focus:ring-2 focus:ring-primary/20 text-left"
-              />
-            </div>
-            <button
-              type="submit"
-              className="inline-flex items-center justify-center gap-2 rounded-lg bg-primary px-5 py-2 sm:py-2.5 text-xs sm:text-sm font-semibold text-primary-foreground shadow-glow transition-transform hover:-translate-y-0.5 cursor-pointer"
-            >
-              <Send className="h-3.5 w-3.5" /> {sent ? "Inquiry Sent — Thank You!" : "Submit Inquiry"}
-            </button>
-            {sent && <p className="text-xs text-accent text-left">We'll get back to you shortly.</p>}
-          </div>
-        </form>
+          </form>
+        </div>
       </div>
     </section>
   );
@@ -181,7 +166,7 @@ function Field({
 }) {
   return (
     <div className="flex flex-col">
-      <label className="text-xs sm:text-sm font-medium text-foreground/80 text-left" htmlFor={name}>
+      <label className="text-xs sm:text-sm font-bold text-gray-700 text-left" htmlFor={name}>
         {label}
       </label>
       <input
@@ -190,8 +175,9 @@ function Field({
         type={type}
         required={required}
         placeholder={placeholder}
-        className="mt-1 w-full rounded-lg border border-input bg-background px-3 py-1.5 sm:px-4 sm:py-2.5 text-xs sm:text-sm outline-none transition-colors focus:border-primary focus:ring-2 focus:ring-primary/20 text-left"
+        className="mt-2 w-full rounded-lg border border-gray-200 bg-white px-4 py-2.5 text-xs sm:text-sm outline-none transition-colors focus:border-[#d4af37] focus:ring-2 focus:ring-[#d4af37]/20 text-left"
       />
     </div>
   );
 }
+

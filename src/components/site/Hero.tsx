@@ -1,5 +1,8 @@
-import { ArrowRight, ShieldCheck, BadgeCheck } from "lucide-react";
+import { useState, useEffect } from "react";
+import { ChevronLeft, ChevronRight, ArrowRight } from "lucide-react";
 import heroImg from "@/assets/hero-turmeric.jpg";
+import manufacturingImg from "@/assets/manufacturing.jpg";
+import cuminImg from "@/assets/product-cumin.jpg";
 
 interface HeroProps {
   title?: string;
@@ -8,79 +11,142 @@ interface HeroProps {
 }
 
 export function Hero({ title, subtitle, imageUrl }: HeroProps) {
-  const displayTitle = title || "Pure Spices Direct From India's Golden Farming Belts";
-  const displaySubtitle = subtitle || "Sourced straight from the organic fields of Deesa, Gujarat. Processed with low-temperature cool-grinding to preserve natural volatile oils, purity, and rich aroma — certified export-grade under flagship brand Aviraaj.";
-  const displayImage = imageUrl || heroImg;
+  const slides = [
+    {
+      title: title || "Welcome to Agrozaar Foods LLP",
+      subtitle: subtitle || "Connecting wholesale global buyers with India's finest ground spices under flagship brand Aviraaj.",
+      img: imageUrl || heroImg,
+      align: "center",
+      btnText: "Connect With Us",
+      btnHref: "#contact",
+      isVideo: true,
+    },
+    {
+      title: "Premium Spice Processing & Purity",
+      subtitle: "Processed using advanced Volatile Oil Retention (VOR) cool-grinding technology to preserve natural aroma and oils.",
+      img: manufacturingImg,
+      align: "left",
+      btnText: "Explore Our Products",
+      btnHref: "#products",
+    },
+    {
+      title: "100% Certified Export Grade",
+      subtitle: "Rigorous quality compliance, moisture control, and double-walled packaging designed for international sea cargo.",
+      img: cuminImg,
+      align: "right",
+      btnText: "Request B2B Quote",
+      btnHref: "#contact",
+    },
+  ];
+
+  const [currentIndex, setCurrentIndex] = useState(0);
+
+  useEffect(() => {
+    const timer = setInterval(() => {
+      setCurrentIndex((prev) => (prev + 1) % slides.length);
+    }, 5000);
+    return () => clearInterval(timer);
+  }, [slides.length]);
+
+  const prevSlide = () => {
+    setCurrentIndex((prev) => (prev - 1 + slides.length) % slides.length);
+  };
+
+  const nextSlide = () => {
+    setCurrentIndex((prev) => (prev + 1) % slides.length);
+  };
 
   return (
-    <section id="top" className="relative overflow-hidden bg-secondary/50">
-      <div className="pointer-events-none absolute -right-32 -top-32 h-96 w-96 rounded-full bg-primary/10 blur-3xl" />
-      <div className="pointer-events-none absolute -bottom-40 -left-20 h-96 w-96 rounded-full bg-accent/10 blur-3xl" />
-
-      <div className="container-x relative grid items-center gap-6 py-6 md:py-12 lg:grid-cols-2 lg:gap-12">
-        <div>
-          <span className="inline-flex items-center gap-2 rounded-full border border-primary/30 bg-background px-4 py-1.5 text-xs font-semibold tracking-wide text-spice-brown">
-            <span className="h-1.5 w-1.5 rounded-full bg-primary" /> Spice Manufacturing & Export ·
-            Gujarat, India
-          </span>
-
-          <h1 className="mt-6 font-heading text-3xl sm:text-4xl md:text-6xl font-extrabold leading-[1.05] text-spice-brown text-balance">
-            {displayTitle}
-          </h1>
-
-          <p className="mt-6 max-w-xl text-base md:text-lg leading-relaxed text-muted-foreground">
-            {displaySubtitle}
-          </p>
-
-          <div className="mt-9 flex flex-wrap gap-4">
-            <a
-              href="#products"
-              className="inline-flex items-center gap-2 rounded-lg bg-primary px-7 py-3.5 text-sm font-semibold text-primary-foreground shadow-glow transition-transform hover:-translate-y-0.5"
-            >
-              Explore Products <ArrowRight className="h-4 w-4" />
-            </a>
-            <a
-              href="#contact"
-              className="inline-flex items-center gap-2 rounded-lg border border-border bg-background px-7 py-3.5 text-sm font-semibold text-spice-brown transition-colors hover:bg-secondary"
-            >
-              Contact Us
-            </a>
-          </div>
-
-          <div className="mt-10 flex flex-wrap gap-8">
-            <div className="flex items-center gap-2.5">
-              <ShieldCheck className="h-5 w-5 text-accent" />
-              <span className="text-sm font-medium text-foreground/80">Lab Tested Quality</span>
-            </div>
-            <div className="flex items-center gap-2.5">
-              <BadgeCheck className="h-5 w-5 text-accent" />
-              <span className="text-sm font-medium text-foreground/80">Export Grade Standards</span>
-            </div>
-          </div>
-        </div>
-
-        <div className="relative">
-          <div className="overflow-hidden rounded-3xl border border-border bg-card shadow-card">
-            <img
-              src={displayImage}
-              alt="Bowl of premium spices"
-              width={1280}
-              height={1280}
-              className="h-full w-full object-cover max-h-[220px] md:max-h-[380px]"
+    <section id="top" className="relative h-[480px] md:h-[600px] lg:h-[680px] w-full overflow-hidden bg-black">
+      {/* Slides */}
+      {slides.map((slide, index) => (
+        <div
+          key={index}
+          className={`absolute inset-0 w-full h-full transition-opacity duration-1000 ease-in-out ${
+            index === currentIndex ? "opacity-100 z-10 pointer-events-auto" : "opacity-0 z-0 pointer-events-none"
+          }`}
+        >
+          {slide.isVideo ? (
+            <video
+              src="/hero-bg-video.mp4"
+              autoPlay
+              loop
+              muted
+              playsInline
+              className="h-full w-full object-cover brightness-[0.5] scale-100 transition-transform duration-[5000ms]"
             />
-          </div>
-          <div className="absolute -bottom-6 left-6 rounded-2xl border border-border bg-card px-6 py-4 shadow-card">
-            <p className="font-heading text-2xl font-extrabold text-primary">100%</p>
-            <p className="text-xs font-medium text-muted-foreground">Natural & Pure</p>
-          </div>
-          <div className="absolute -right-3 top-8 rounded-2xl border border-border bg-card px-5 py-3 shadow-card">
-            <p className="font-heading text-lg font-extrabold text-spice-brown">Aviraaj</p>
-            <p className="text-[0.65rem] font-medium tracking-wide text-muted-foreground">
-              Flagship Brand
-            </p>
+
+          ) : (
+            <img
+              src={slide.img}
+              alt={slide.title}
+              className="h-full w-full object-cover brightness-[0.6] scale-100 transition-transform duration-[5000ms]"
+            />
+          )}
+          <div className="absolute inset-0 bg-black/35" />
+
+          <div className="absolute inset-0 flex items-center justify-center">
+            <div
+              className={`container-x w-full text-white px-4 md:px-8 text-center md:max-w-4xl ${
+                slide.align === "left"
+                  ? "md:text-left md:mr-auto"
+                  : slide.align === "right"
+                  ? "md:text-right md:ml-auto"
+                  : "text-center mx-auto"
+              }`}
+            >
+              <h1 className="text-3xl md:text-5xl lg:text-6xl font-extrabold mb-4 md:mb-6 leading-tight tracking-tight drop-shadow-md animate-slide-up text-balance">
+                {slide.title}
+              </h1>
+              <p className="text-sm md:text-lg lg:text-xl mb-6 md:mb-10 text-white/90 font-medium leading-relaxed max-w-2xl drop-shadow-sm inline-block text-pretty">
+                {slide.subtitle}
+              </p>
+              <div>
+                <a
+                  href={slide.btnHref}
+                  className="inline-flex items-center gap-2 bg-[#d4af37] hover:bg-[#d4af37]/90 text-[#0a1520] font-bold py-3 px-8 rounded-md text-sm md:text-base transition-all duration-300 hover:shadow-lg hover:shadow-[#d4af37]/45 group btn-shine"
+                >
+                  {slide.btnText}
+                  <ArrowRight className="h-4 w-4 md:h-5 md:w-5 group-hover:translate-x-1 transition-transform" />
+                </a>
+              </div>
+            </div>
           </div>
         </div>
+      ))}
+
+      {/* Nav Chevrons */}
+      <button
+        aria-label="Previous slide"
+        onClick={prevSlide}
+        className="absolute left-4 top-1/2 -translate-y-1/2 z-20 bg-white/10 hover:bg-white/25 backdrop-blur-sm p-2 md:p-3 rounded-full text-white transition-all border border-white/20 hover:scale-105"
+      >
+        <ChevronLeft className="h-5 w-5 md:h-6 md:w-6" />
+      </button>
+      <button
+        aria-label="Next slide"
+        onClick={nextSlide}
+        className="absolute right-4 top-1/2 -translate-y-1/2 z-20 bg-white/10 hover:bg-white/25 backdrop-blur-sm p-2 md:p-3 rounded-full text-white transition-all border border-white/20 hover:scale-105"
+      >
+        <ChevronRight className="h-5 w-5 md:h-6 md:w-6" />
+      </button>
+
+      {/* Indicator Dots */}
+      <div className="absolute bottom-6 left-1/2 -translate-x-1/2 z-20 flex space-x-3">
+        {slides.map((_, index) => (
+          <button
+            key={index}
+            aria-label={`Go to slide ${index + 1}`}
+            onClick={() => setCurrentIndex(index)}
+            className={`w-2.5 h-2.5 md:w-3.5 md:h-3.5 rounded-full transition-all duration-300 ${
+              index === currentIndex
+                ? "bg-[#d4af37] scale-125 shadow-md"
+                : "bg-white/40 hover:bg-white/60"
+            }`}
+          />
+        ))}
       </div>
     </section>
   );
 }
+

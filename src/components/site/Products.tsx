@@ -1,4 +1,5 @@
-import { ArrowUpRight } from "lucide-react";
+import { useRef } from "react";
+import { ChevronLeft, ChevronRight } from "lucide-react";
 import turmeric from "@/assets/product-turmeric.jpg";
 import chilli from "@/assets/product-chilli.jpg";
 import coriander from "@/assets/product-coriander.jpg";
@@ -10,28 +11,33 @@ const defaultImages = [turmeric, chilli, coriander, cumin, garam];
 const products = [
   {
     img: turmeric,
-    name: "Turmeric Powder",
-    desc: "Vibrant golden color with high curcumin content and rich earthy aroma.",
+    name: "Premium Turmeric Powder",
+    desc: "Vibrant golden-yellow color, high curcumin content, and rich earthy aroma.",
+    href: "#contact",
   },
   {
     img: chilli,
-    name: "Chilli Powder",
-    desc: "Natural red color and balanced heat, milled from premium-grade chillies.",
+    name: "Vibrant Chilli Powder",
+    desc: "Milled from carefully selected premium red chillies for optimal color and heat.",
+    href: "#contact",
   },
   {
     img: coriander,
-    name: "Coriander Powder",
-    desc: "Freshly ground from sorted seeds for a fragrant, citrusy flavor.",
+    name: "Aromatic Coriander Powder",
+    desc: "Freshly milled from sorted coriander seeds to preserve citrusy notes.",
+    href: "#contact",
   },
   {
     img: cumin,
-    name: "Cumin Powder",
-    desc: "Warm, nutty and aromatic — a kitchen and processing essential.",
+    name: "Pure Cumin Powder",
+    desc: "Warm, nutty ground cumin — clean, aromatic, and export-grade purity.",
+    href: "#contact",
   },
   {
     img: garam,
-    name: "Garam Masala",
-    desc: "Signature blend of whole spices for authentic depth and warmth.",
+    name: "Signature Garam Masala",
+    desc: "Authentic whole-spice blend crafted to deliver warm depth and complexity.",
+    href: "#contact",
   },
 ];
 
@@ -40,105 +46,126 @@ interface ProductsProps {
 }
 
 export function Products({ spices }: ProductsProps) {
+  const containerRef = useRef<HTMLDivElement>(null);
+
   const displaySpices = (spices && spices.length > 0)
     ? spices.map((s, idx) => ({
         name: s.name,
         desc: s.desc,
         img: s.image_url || defaultImages[idx % defaultImages.length],
+        href: "#contact",
       }))
     : products;
 
-  const items = [
-    ...displaySpices.map((p) => ({ ...p, isCustom: false })),
-    { name: "Custom Spice Blends", desc: "", img: "", isCustom: true },
+  const allItems = [
+    ...displaySpices,
+    {
+      name: "Custom Spice Blends",
+      desc: "Private-label custom formulations and customized spice grinding specifications.",
+      img: manufacturingImg(),
+      href: "#contact",
+    },
   ];
 
-  const renderItem = (item: { name: string; desc: string; img: string; isCustom: boolean }, keyPrefix: string) => {
-    if (item.isCustom) {
-      return (
-        <article
-          key={`${keyPrefix}-custom`}
-          className="flex flex-col justify-center rounded-2xl border border-dashed border-primary/40 bg-primary/5 p-6 sm:p-8 w-[280px] md:w-[320px] shrink-0 mr-6 text-left"
-        >
-          <h3 className="font-heading text-lg sm:text-xl font-bold text-spice-brown">Custom Spice Blends</h3>
-          <p className="mt-3 text-xs sm:text-sm leading-relaxed text-muted-foreground">
-            Need a private-label or tailored formulation for your brand? We manufacture custom
-            blends to your specification.
-          </p>
-          <a
-            href="#contact"
-            className="mt-5 inline-flex w-fit items-center gap-2 rounded-lg bg-primary px-5 py-2.5 text-sm font-semibold text-primary-foreground transition-transform hover:-translate-y-0.5"
-          >
-            Request a Quote <ArrowUpRight className="h-4 w-4" />
-          </a>
-        </article>
-      );
-    }
+  // Helper helper to return a manufacturing image
+  function manufacturingImg() {
+    return defaultImages[0]; // fallback to turmeric/spice
+  }
 
-    return (
-      <article
-        key={`${keyPrefix}-${item.name}`}
-        className="group overflow-hidden rounded-2xl border border-border bg-card shadow-soft transition-all duration-300 hover:-translate-y-1 hover:shadow-card w-[280px] md:w-[320px] shrink-0 mr-6 text-left"
-      >
-        <div className="relative overflow-hidden">
-          <img
-            src={item.img}
-            alt={item.name}
-            width={800}
-            height={800}
-            loading="lazy"
-            className="h-28 sm:h-36 md:h-44 lg:h-48 w-full object-cover transition-transform duration-500 group-hover:scale-105"
-          />
-          <span className="absolute left-4 top-4 rounded-full bg-background/90 px-3 py-1 text-xs font-semibold text-spice-brown shadow-soft">
-            Aviraaj
-          </span>
-        </div>
-        <div className="p-5 sm:p-6">
-          <div className="flex items-center justify-between gap-3">
-            <h3 className="font-heading text-lg sm:text-xl font-bold text-spice-brown">{item.name}</h3>
-            <span className="flex h-9 w-9 items-center justify-center rounded-full bg-secondary text-primary transition-colors group-hover:bg-primary group-hover:text-primary-foreground">
-              <ArrowUpRight className="h-4 w-4" />
-            </span>
-          </div>
-          <p className="mt-3 text-xs sm:text-sm leading-relaxed text-muted-foreground">{item.desc}</p>
-        </div>
-      </article>
-    );
+  const scroll = (direction: "left" | "right") => {
+    if (containerRef.current) {
+      const scrollAmount = 340;
+      containerRef.current.scrollBy({
+        left: direction === "left" ? -scrollAmount : scrollAmount,
+        behavior: "smooth",
+      });
+    }
   };
 
   return (
-    <section id="products" className="py-8 md:py-16 bg-secondary/40">
+    <section id="products" className="py-16 md:py-24 bg-[#0a1520] text-white">
       <div className="container-x">
-        <div className="mx-auto max-w-2xl text-center">
-          <span className="text-sm font-semibold uppercase tracking-[0.18em] text-primary">
+        <div className="text-center mb-12">
+          <span className="text-xs font-bold uppercase tracking-widest text-[#d4af37]">
             Our Products
           </span>
-          <h2 className="mt-4 font-heading text-3xl md:text-4xl font-extrabold text-spice-brown text-balance">
-            Premium spices, packed with purity
+          <h2 className="text-3xl md:text-4xl font-extrabold mt-3 tracking-tight">
+            Premium Spices, Packed with Purity
           </h2>
-          <p className="mt-4 text-muted-foreground">
-            A complete range of ground spices and blends, available in retail and bulk export
-            packaging.
+          <div className="w-20 h-1 bg-[#d4af37] mx-auto mt-4 rounded-full"></div>
+          <p className="mt-4 text-white/70 max-w-2xl mx-auto text-sm md:text-base">
+            Explore our complete range of certified ground spices and custom formulations, available in bulk and export packaging.
           </p>
         </div>
 
-        <div className="relative mt-10 overflow-hidden w-full">
-          {/* Gradient Fades */}
-          <div className="absolute left-0 top-0 bottom-0 w-12 md:w-24 bg-gradient-to-r from-background to-transparent z-10 pointer-events-none" />
-          <div className="absolute right-0 top-0 bottom-0 w-12 md:w-24 bg-gradient-to-l from-background to-transparent z-10 pointer-events-none" />
+        <div className="relative mt-8">
+          {/* Slider controls */}
+          <button
+            onClick={() => scroll("left")}
+            className="absolute left-0 top-1/2 -translate-y-1/2 z-20 bg-white/10 hover:bg-white/20 backdrop-blur-sm p-3 rounded-full text-white transition-all border border-white/20 hover:scale-105"
+            aria-label="Previous products"
+          >
+            <ChevronLeft className="h-6 w-6" />
+          </button>
+          
+          <button
+            onClick={() => scroll("right")}
+            className="absolute right-0 top-1/2 -translate-y-1/2 z-20 bg-white/10 hover:bg-white/20 backdrop-blur-sm p-3 rounded-full text-white transition-all border border-white/20 hover:scale-105"
+            aria-label="Next products"
+          >
+            <ChevronRight className="h-6 w-6" />
+          </button>
 
-          <div className="flex w-max animate-marquee hover:[animation-play-state:paused] py-4">
-            {/* First Set */}
-            <div className="flex shrink-0">
-              {items.map((item) => renderItem(item, "set1"))}
-            </div>
-            {/* Second Set */}
-            <div className="flex shrink-0" aria-hidden="true">
-              {items.map((item) => renderItem(item, "set2"))}
-            </div>
+          {/* Cards container */}
+          <div
+            ref={containerRef}
+            className="flex gap-6 overflow-x-auto scrollbar-none py-6 px-10 scroll-smooth"
+          >
+            {allItems.map((item, idx) => (
+              <div
+                key={idx}
+                className="flex-none w-[280px] md:w-[320px] p-1 animate-on-scroll"
+              >
+                <div className="bg-white rounded-xl overflow-hidden shadow-lg product-card h-80 relative group border border-white/10">
+                  <img
+                    src={item.img}
+                    alt={item.name}
+                    className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-110"
+                    loading="lazy"
+                  />
+                  <div className="absolute inset-0 bg-gradient-to-t from-black/85 via-black/40 to-transparent flex flex-col justify-end p-5 text-left">
+                    <span className="text-[10px] font-bold uppercase tracking-wider text-[#d4af37] mb-1">
+                      Aviraaj Spices
+                    </span>
+                    <h3 className="text-lg md:text-xl font-bold text-white mb-2 leading-tight">
+                      {item.name}
+                    </h3>
+                    <p className="text-white/70 text-xs line-clamp-2 mb-4 leading-normal">
+                      {item.desc}
+                    </p>
+                    <a
+                      href={item.href}
+                      className="bg-[#d4af37] hover:bg-[#d4af37]/90 text-[#0a1520] font-bold py-2 px-5 rounded-md text-xs transition-colors w-fit btn-shine text-center"
+                    >
+                      Explore
+                    </a>
+                  </div>
+                </div>
+              </div>
+            ))}
           </div>
+        </div>
+
+        <div className="flex justify-center mt-10">
+          <a
+            href="#contact"
+            className="bg-[#d4af37] hover:bg-[#d4af37]/90 text-[#0a1520] font-bold py-3 px-8 rounded-md text-sm md:text-base transition-all duration-300 hover:shadow-lg hover:shadow-[#d4af37]/30 btn-shine"
+          >
+            Request Wholesale Quotation
+          </a>
         </div>
       </div>
     </section>
   );
 }
+
